@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "campus.nav",
-    "slug": "campus.nav",
+    "name": "Campus Nav",
+    "slug": "campusnav",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,6 +22,31 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5292ea5e-beff-4827-a8ed-f1090f748413"
+      }
+    },
+    "owner": "khonello",
+    "plugins": [
+      [
+        "expo-asset",
+        {
+          "assets": [
+            "path/to/file.png",
+            "path/to/directory"
+          ]
+        }
+      ],
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "path/to/file.ttf"
+          ]
+        }
+      ]
+    ]
   }
 }
