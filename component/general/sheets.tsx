@@ -1,19 +1,85 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking, TextInputTextInputEventData, NativeSyntheticEvent } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as Location from "expo-location";
+import MapView, { Marker, Circle } from 'react-native-maps';
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import Constants from "expo-constants";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
+const names = {}
+const facilities = {}
+const types = {}
 
 export const Main = () => {
 
     useEffect(() => {
 
+        (async () => {
+            
+            const { status: checkStatus }  = await Location.getForegroundPermissionsAsync()
+            if (checkStatus !== "granted") {
+
+                const { status: requestStatus } = await Location.requestForegroundPermissionsAsync()
+                if (requestStatus !== "granted") {
+                    Alert.alert(
+                        "Permission Required",
+                        "Location permission is needed to use this app. Please enable it in the settings.",
+                        [
+                            { text: "Open Settings", onPress: () => {
+                                    (async () => {
+                                        const canOpen = await Linking.openURL("app-settings:")
+                                        if (canOpen) {
+                                            await Linking.openSettings()
+                                        }
+                                    })()
+                                } 
+                            },
+                            { text: "Cancel", style: "cancel" }
+                        ]
+                    );
+                }
+            }
+
+            (async () => {
+                
+                const info = await Location.getCurrentPositionAsync()
+                // console.log(info.coords)
+            })()
+        })()
         setRender(originalContent)
     }, [])
 
+    useEffect(() => {
+
+        const buildRelation = () => {
+            campus.forEach((block) => {
+                block.names.forEach((name) => {
+                    names[name] = block.id
+                }) 
+                block.facilities.forEach((facility) => {
+                    const check = facilities[facility] || []
+                    facilities[facility] = [...check, block.id]
+                })
+                const check = types[block.type] || []
+                types[block.type] = [...check, block.id]
+            })
+
+        }
+
+        buildRelation()
+    }, [])
+
+    const insets = useRef(useSafeAreaInsets())
+    const googleMapsURL = "https://maps.googleapis.com/maps/api/"
+    const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
+    const campus = [
+        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washrooms", "offices", "labs"], type: "educational", officialName: "Faculty Of Engineering" },
+        { id: 2, names: ["as", "applied science"], facilities: ["offices"], type: "educational", officialName: "Applied Science" }
+    ]
     const [snapPoints, setSnapPoints] = useState(
         ["12%", "30%", "90%"]
     )
@@ -25,12 +91,13 @@ export const Main = () => {
         ]
     )
     const [recentData, setRecentData] = useState(
-        Array.from(
-            {length: 2},
-            (iter, idx) => (
-                {key: idx, content: "", icon: ""}
-            )
-        )
+        // Array.from(
+        //     {length: 2},
+        //     (iter, idx) => (
+        //         {key: idx, content: "", icon: ""}
+        //     )
+        // )
+        []
     )
     const [profileVisible, setProfileVisible] = useState(false)
 
@@ -77,13 +144,50 @@ export const Main = () => {
         setRender(originalContent)
     }
 
-    const handleTextInputPress = () => {
+    const handleTextInputChange = ( text: string ) => {
+
         setProfileVisible(false)
         setRender(searchContent)
 
         profileRef.current?.close()
         mainRef.current?.expand()
 
+        if (text.length > 0) {
+
+            const namesKeys = Object.keys(names)
+            const facilitiesKeys = Object.keys(facilities)
+            const typeKeys = Object.keys(types)
+            const IDs = new Set()                 // we use set because of possible duplication when (ie. 'a' matches 'as' and 'applied science')
+
+            const combineKeys = [...namesKeys, ...facilitiesKeys, ...typeKeys]
+            combineKeys.forEach((key) => {
+
+                if (key.startsWith(text.toLowerCase().trim())) {
+
+                    const infrastructureID: Number | Number[] = names[key] || facilities[key] || types[key]
+                    if (infrastructureID) {
+                        
+                        if (Array.isArray(infrastructureID)) {
+                            infrastructureID.forEach(id => {
+
+                                // console.log(id)
+                            });
+                        } else {
+
+                            IDs.add(infrastructureID)
+                        }
+                    }
+                }
+            })
+            IDs.forEach((id) => {
+
+                // const infrastructure = campus.find((item) => item.id == id)
+                setRecentData((prevData) => (
+                    [ ...prevData, {key: recentData.length, content: `${id}`, icon: ""} ]
+                ))
+            })
+        }
+        
     }
 
     const libraryRenderItem = ( item ) => (
@@ -174,53 +278,56 @@ export const Main = () => {
 
     return (
         <View style= {styles.container}> 
-            <ImageBackground source= {require("../../assets/splash.png")} style= {{width: WIDTH, height: HEIGHT}}>
-            <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
+            <View style= {styles.mapContainer}>
+                <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.0645664, longitude: -0.2653885, latitudeDelta: 0.0922, longitudeDelta: 0.0421}}>
+                    <Marker coordinate= {{latitude: 6.0645664, longitude: -0.2653885}} title= "Hell" description= "Welcome To Hell"/>
+                </MapView>
+                <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
 
-                <BottomSheetView style= {styles.headerContainer}>
-                    <BottomSheetView style= {styles.textinputContainer}>
-                        <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                        <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onTextInput= {handleTextInputPress} onEndEditing= {handleTextInputFinish}/>
+                    <BottomSheetView style= {styles.headerContainer}>
+                        <BottomSheetView style= {styles.textinputContainer}>
+                            <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
+                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange}/>
+                        </BottomSheetView>
+                        <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
+                            <BottomSheetView>
+                                <Image source= {require("../../assets/avatar.png")} style= {styles.headerProfileImage}/>
+                            </BottomSheetView>
+                        </TouchableOpacity>
                     </BottomSheetView>
-                    <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
-                        <BottomSheetView>
-                            <Image source= {require("../../assets/avatar.png")} style= {styles.headerProfileImage}/>
-                        </BottomSheetView>
-                    </TouchableOpacity>
-                </BottomSheetView>
 
-                {render}
-                
-            </BottomSheet>
+                    {render}
+                    
+                </BottomSheet>
 
-            {
-                profileVisible && (
-                    <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
-                        <BottomSheetView style= {styles.profileSheetContainer}>
-                            <BottomSheetView style= {styles.profileSheetHeaderContainer}>
-                                <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
-                                    <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
-                                </BottomSheetView>
-                                <BottomSheetView style= {styles.profileSheetHeaderMainContainer}>
-                                    <Text style= {{fontSize: 20, fontWeight: "bold"}}>Firstname Lastname</Text>
-                                    <Text>somebody@email.com</Text>
-                                </BottomSheetView>
-                                <TouchableOpacity onPress= {handleProfileClose}>
-                                    <BottomSheetView style= {styles.profileSheetHeaderCloseContainer}>
-                                        <Entypo name= "circle-with-cross" size= {30} color= {"#858585"}/>
+                {
+                    profileVisible && (
+                        <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
+                            <BottomSheetView style= {styles.profileSheetContainer}>
+                                <BottomSheetView style= {styles.profileSheetHeaderContainer}>
+                                    <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
+                                        <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
                                     </BottomSheetView>
-                                </TouchableOpacity>
-                            </BottomSheetView>
-                            <BottomSheetView style= {styles.profileSheetContentContainer}>
-                                    <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                                        {profileData.map(profileRenderItem)}
+                                    <BottomSheetView style= {styles.profileSheetHeaderMainContainer}>
+                                        <Text style= {{fontSize: 20, fontWeight: "bold"}}>Firstname Lastname</Text>
+                                        <Text>somebody@email.com</Text>
                                     </BottomSheetView>
+                                    <TouchableOpacity onPress= {handleProfileClose}>
+                                        <BottomSheetView style= {styles.profileSheetHeaderCloseContainer}>
+                                            <Entypo name= "circle-with-cross" size= {30} color= {"#858585"}/>
+                                        </BottomSheetView>
+                                    </TouchableOpacity>
+                                </BottomSheetView>
+                                <BottomSheetView style= {styles.profileSheetContentContainer}>
+                                        <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                                            {profileData.map(profileRenderItem)}
+                                        </BottomSheetView>
+                                </BottomSheetView>
                             </BottomSheetView>
-                        </BottomSheetView>
-                    </BottomSheet>
-                )
-            }
-            </ImageBackground>
+                        </BottomSheet>
+                    )
+                }
+            </View>
         </View>
     )
 }
@@ -231,6 +338,15 @@ const styles  = StyleSheet.create(
         container: {
             flex: 1,
             justifyContent: "center",
+        },
+        mapContainer: {
+            flex: 1,
+            // backgroundColor: "orange"
+        },
+        navbarContainer: {
+            flex: 0.1,
+            flexDirection: "row-reverse",
+            backgroundColor: "pink"
         },
         headerContainer: {
             flexDirection: "row",
@@ -302,7 +418,7 @@ const styles  = StyleSheet.create(
             marginHorizontal: 10,
             borderRadius: 10,
             // borderWidth: 1,
-            minHeight: WIDTH * 0.2,
+            minHeight: HEIGHT * 0.11,
             backgroundColor: "#E7E7E6",
 
         },

@@ -3,7 +3,7 @@
     "name": "Campus Nav",
     "slug": "campusnav",
     "version": "1.0.0",
-    "orientation": "landscape",
+    "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -26,7 +26,8 @@
     "extra": {
       "eas": {
         "projectId": "5292ea5e-beff-4827-a8ed-f1090f748413"
-      }
+      },
+      "googleMapsApiKey": "AIzaSyAMqo2YU8n38vEdkk6PME4w4GTp2uA66JU"
     },
     "owner": "khonello",
     "plugins": [
