@@ -181,9 +181,9 @@ export const Main = () => {
             })
             IDs.forEach((id) => {
 
-                // const infrastructure = campus.find((item) => item.id == id)
+                const infrastructure = campus.find((item) => item.id == id)
                 setRecentData((prevData) => (
-                    [ ...prevData, {key: recentData.length, content: `${id}`, icon: ""} ]
+                    [ ...prevData.filter((obj) => obj.key !== id), {key: id, content: infrastructure.officialName, icon: ""} ]
                 ))
             })
         }
