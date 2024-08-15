@@ -12,7 +12,6 @@ const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
 const names = {}
 const facilities = {}
-const types = {}
 
 export const Main = () => {
 
@@ -31,7 +30,7 @@ export const Main = () => {
                         [
                             { text: "Open Settings", onPress: () => {
                                     (async () => {
-                                        const canOpen = await Linking.openURL("app-settings:")
+                                        const canOpen = await Linking.canOpenURL("app-settings:")
                                         if (canOpen) {
                                             await Linking.openSettings()
                                         }
@@ -64,8 +63,6 @@ export const Main = () => {
                     const check = facilities[facility] || []
                     facilities[facility] = [...check, block.id]
                 })
-                const check = types[block.type] || []
-                types[block.type] = [...check, block.id]
             })
 
         }
@@ -77,8 +74,17 @@ export const Main = () => {
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
     const campus = [
-        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washrooms", "offices", "labs"], type: "educational", officialName: "Faculty Of Engineering" },
-        { id: 2, names: ["as", "applied science"], facilities: ["offices"], type: "educational", officialName: "Applied Science" }
+        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washrooms", "offices", "labs"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q" },
+        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["offices", "hall"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I" },
+        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "offices"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ" },
+        { id: 4, names: ["as", "applied science"], facilities: ["offices", "hall"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA" },
+        { id: 5, names: ["getfund"], facilities: ["supermarket"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s" },
+        { id: 6, names: ["court", "tennis"], facilities: [], officialName: "Tennis Court", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
+        { id: 7, names: ["court", "basket ball"], facilities: [], officialName: "Basket Ball Court", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
+        { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8" },
+        { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0" },
+        { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y" },
+        { id: 11, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4" },
     ]
     const [snapPoints, setSnapPoints] = useState(
         ["12%", "30%", "90%"]
@@ -86,8 +92,8 @@ export const Main = () => {
     const [render, setRender] = useState(null)
     const [data, setData] = useState(
         [
-            {key: 1, title: "Add", content: <Entypo name= "plus" size= {20} color= {"white"}/>},
-            {key: 2, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/>},
+            {key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/>},
+            {key: 2, title: "Washroom", content: <Entypo name= "water" size= {20} color= {"white"}/>},
         ]
     )
     const [recentData, setRecentData] = useState(
@@ -98,6 +104,11 @@ export const Main = () => {
         //     )
         // )
         []
+    )
+    const [searchData, setSearchData] = useState(
+        [
+
+        ]
     )
     const [profileVisible, setProfileVisible] = useState(false)
 
@@ -142,50 +153,70 @@ export const Main = () => {
 
     const handleTextInputFinish = () => {
         setRender(originalContent)
+        // setSearchData([])
     }
 
     const handleTextInputChange = ( text: string ) => {
 
+        const lowerCase = text.toLowerCase().trim()
+
         setProfileVisible(false)
-        setRender(searchContent)
+        setSearchData([])
 
         profileRef.current?.close()
         mainRef.current?.expand()
 
+        lowerCase.startsWith("ktu") && lowerCase.replace("ktu", "").trim()
+
         if (text.length > 0) {
 
+            interface IDKey {
+
+                id: number,
+                // dummyID: number,
+                key: string
+            }
             const namesKeys = Object.keys(names)
             const facilitiesKeys = Object.keys(facilities)
-            const typeKeys = Object.keys(types)
-            const IDs = new Set()                 // we use set because of possible duplication when (ie. 'a' matches 'as' and 'applied science')
+            const IDsKey: Set<IDKey> = new Set()
+            const searches = new Set()
 
-            const combineKeys = [...namesKeys, ...facilitiesKeys, ...typeKeys]
+            const combineKeys = [...namesKeys, ...facilitiesKeys]
             combineKeys.forEach((key) => {
 
-                if (key.startsWith(text.toLowerCase().trim())) {
+                if (key.startsWith(lowerCase.trim())) {
 
-                    const infrastructureID: Number | Number[] = names[key] || facilities[key] || types[key]
+                    const infrastructureID: number = names[key] || facilities[key]
                     if (infrastructureID) {
                         
                         if (Array.isArray(infrastructureID)) {
                             infrastructureID.forEach(id => {
 
-                                // console.log(id)
+                                IDsKey.add({ id: id, key: key })
                             });
                         } else {
 
-                            IDs.add(infrastructureID)
+                            IDsKey.add({ id: infrastructureID, key: null })
                         }
                     }
                 }
             })
-            IDs.forEach((id) => {
+            IDsKey.forEach((IDkey) => {
 
-                const infrastructure = campus.find((item) => item.id == id)
+                const infrastructure = campus.find((item) => item.id == IDkey.id)
                 setRecentData((prevData) => (
-                    [ ...prevData.filter((obj) => obj.key !== id), {key: id, content: infrastructure.officialName, icon: ""} ]
+                    [ ...prevData.filter((obj) => obj.key !== IDkey.id), {key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""} ]
+                ))
+
+                searches.add(JSON.stringify({key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""}))
+            })
+
+            searches.forEach((data: string) => {
+                setSearchData((prevData) => (
+                    [...prevData, JSON.parse(data)]
                 ))
             })
+
         }
         
     }
@@ -242,7 +273,12 @@ export const Main = () => {
 
             <BottomSheetView style= {styles.recentContainer}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
-                    <Text style= {styles.libraryTitleText}>Recent</Text>
+                    <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
+                        <Text style= {styles.libraryTitleText}>Recent</Text>
+                        <TouchableOpacity onPress= {() => setRecentData([])}>
+                            <Text style= {{...styles.libraryTitleText, paddingRight: 10}}>Clear</Text>
+                        </TouchableOpacity>
+                    </BottomSheetView>
                 </BottomSheetView>
                 <BottomSheetView style= {styles.recentBoxViewContainer}>
                     {recentData.map(recentRenderItem)}
@@ -273,7 +309,18 @@ export const Main = () => {
         </BottomSheetScrollView>
     )
     const searchContent = (
-        null
+        <BottomSheetScrollView style= {styles.scrollContainer}>
+
+            <BottomSheetView style= {{...styles.recentContainer, marginTop: 0}}>
+                <BottomSheetView style= {styles.libraryTitleContainer}>
+                    <Text style= {styles.libraryTitleText}>Search Result</Text>
+                </BottomSheetView>
+                <BottomSheetView style= {styles.recentBoxViewContainer}>
+                    {searchData.map(recentRenderItem)}
+                </BottomSheetView>
+            </BottomSheetView>
+
+        </BottomSheetScrollView>
     )
 
     return (
@@ -287,7 +334,7 @@ export const Main = () => {
                     <BottomSheetView style= {styles.headerContainer}>
                         <BottomSheetView style= {styles.textinputContainer}>
                             <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange}/>
+                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} onTouchStart= {() => setRender(searchContent)}/>
                         </BottomSheetView>
                         <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
                             <BottomSheetView>
