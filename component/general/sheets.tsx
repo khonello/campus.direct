@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking, TextInputTextInputEventData, NativeSyntheticEvent } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import * as Location from "expo-location";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Marker, Circle } from 'react-native-maps';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import debounce from "lodash.debounce";
+import * as Location from "expo-location";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
@@ -14,61 +15,6 @@ const names = {}
 const facilities = {}
 
 export const Main = () => {
-
-    useEffect(() => {
-
-        (async () => {
-            
-            const { status: checkStatus }  = await Location.getForegroundPermissionsAsync()
-            if (checkStatus !== "granted") {
-
-                const { status: requestStatus } = await Location.requestForegroundPermissionsAsync()
-                if (requestStatus !== "granted") {
-                    Alert.alert(
-                        "Permission Required",
-                        "Location permission is needed to use this app. Please enable it in the settings.",
-                        [
-                            { text: "Open Settings", onPress: () => {
-                                    (async () => {
-                                        const canOpen = await Linking.canOpenURL("app-settings:")
-                                        if (canOpen) {
-                                            await Linking.openSettings()
-                                        }
-                                    })()
-                                } 
-                            },
-                            { text: "Cancel", style: "cancel" }
-                        ]
-                    );
-                }
-            }
-
-            (async () => {
-                
-                const info = await Location.getCurrentPositionAsync()
-                // console.log(info.coords)
-            })()
-        })()
-        setRender(originalContent)
-    }, [])
-
-    useEffect(() => {
-
-        const buildRelation = () => {
-            campus.forEach((block) => {
-                block.names.forEach((name) => {
-                    names[name] = block.id
-                }) 
-                block.facilities.forEach((facility) => {
-                    const check = facilities[facility] || []
-                    facilities[facility] = [...check, block.id]
-                })
-            })
-
-        }
-
-        buildRelation()
-    }, [])
 
     const insets = useRef(useSafeAreaInsets())
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
@@ -79,17 +25,21 @@ export const Main = () => {
         { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "offices"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ" },
         { id: 4, names: ["as", "applied science"], facilities: ["offices", "hall"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA" },
         { id: 5, names: ["getfund"], facilities: ["supermarket"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s" },
-        { id: 6, names: ["court", "tennis"], facilities: [], officialName: "Tennis Court", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
-        { id: 7, names: ["court", "basket ball"], facilities: [], officialName: "Basket Ball Court", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
+        { id: 6, names: ["tennis"], facilities: ["court"], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
+        { id: 7, names: ["basket ball"], facilities: ["court"], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
         { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8" },
         { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0" },
         { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y" },
-        { id: 11, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4" },
+        { id: 11, names: ["mosque"], facilities: [], officialName: "Central Mosque", placeID: "ChIJA5Bdpltr3w8RthAWfIzH2iI" },
+        { id: 12, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4" },
+        { id: 13, names: ["ad"], facilities: [], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M" },
+        { id: 14, names: ["fhas", "faculty of health and allied science"], facilities: [], officialName: "Faculty of Health and Allied Science", placeID: "ChIJs7TEQwBr3w8RgcqYXb0sLcA" },
+        { id: 15, names: ["fbms", "faculty of business and management studies"], facilities: [], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w" },
     ]
     const [snapPoints, setSnapPoints] = useState(
         ["12%", "30%", "90%"]
     )
-    const [render, setRender] = useState(null)
+    const [render, setRender] = useState({which: "original", render: null}) 
     const [data, setData] = useState(
         [
             {key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/>},
@@ -110,6 +60,7 @@ export const Main = () => {
 
         ]
     )
+    
     const [profileVisible, setProfileVisible] = useState(false)
 
     const mainRef = useRef<BottomSheet>(null)
@@ -120,6 +71,10 @@ export const Main = () => {
         {key: 2, icon: <Entypo name= "info" size= {30} color= {"#858585"}/>, content: "Preference", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
         {key: 3, icon: <Entypo name= "arrow-left" size= {30} color= {"#858585"}/>, content: "Logout", arrow: <Entypo name= "chevron-small-left" size= {20} color= {"#858585"}/>}
     ]
+
+    const debouncedSearch = useMemo(
+        () => debounce((text) => performSearch(text), 1000),
+    [])
 
     const handleProfilePress = () => {
         
@@ -151,18 +106,10 @@ export const Main = () => {
         }
     }
 
-    const handleTextInputFinish = () => {
-        setRender(originalContent)
-        // setSearchData([])
-    }
-
-    const handleTextInputChange = ( text: string ) => {
+    const performSearch = ( text: string ) => {
 
         const lowerCase = text.toLowerCase().trim()
-
-        setProfileVisible(false)
-        setSearchData([])
-
+        
         profileRef.current?.close()
         mainRef.current?.expand()
 
@@ -173,7 +120,6 @@ export const Main = () => {
             interface IDKey {
 
                 id: number,
-                // dummyID: number,
                 key: string
             }
             const namesKeys = Object.keys(names)
@@ -218,8 +164,21 @@ export const Main = () => {
             })
 
         }
-        
     }
+
+    const handleTextInputFinish = () => {
+        // setRender(originalContent)
+        setRender({which: "original", render: originalContent})
+    }
+
+    const handleTextInputChange = ( text: string ) => {
+
+        setProfileVisible(false)
+        setSearchData([])
+
+        debouncedSearch(text)
+    }
+
 
     const libraryRenderItem = ( item ) => (
 
@@ -260,15 +219,92 @@ export const Main = () => {
         </BottomSheetView>
     )
 
+    const RecentComponent = ( { content } ) => (
+        <BottomSheetView style= {styles.recentBoxViewContainer}>
+            {content.map(recentRenderItem)}
+        </BottomSheetView>
+    )
+
+    const LibraryComponent = ( { content } ) => (
+        <BottomSheetScrollView style= {styles.libraryBoxScrollContainer} horizontal>
+            {content.map(libraryRenderItem)}
+        </BottomSheetScrollView>
+    )
+
+    const SearchComponent = ( { content } ) => (
+        <BottomSheetView style= {styles.recentBoxViewContainer}>
+            {content.map(recentRenderItem)}
+        </BottomSheetView>
+    )
+
+    useEffect(() => {
+
+        (async () => {
+            
+            const { status: checkStatus }  = await Location.getForegroundPermissionsAsync()
+            if (checkStatus !== "granted") {
+
+                const { status: requestStatus } = await Location.requestForegroundPermissionsAsync()
+                if (requestStatus !== "granted") {
+                    Alert.alert(
+                        "Permission Required",
+                        "Location permission is needed to use this app. Please enable it in the settings.",
+                        [
+                            { text: "Open Settings", onPress: () => {
+                                    (async () => {
+                                        const canOpen = await Linking.canOpenURL("app-settings:")
+                                        if (canOpen) {
+                                            await Linking.openSettings()
+                                        }
+                                    })()
+                                } 
+                            },
+                            { text: "Cancel", style: "cancel" }
+                        ]
+                    );
+                }
+            }
+
+            (async () => {
+                
+                const info = await Location.getCurrentPositionAsync()
+                // console.log(info.coords)
+            })()
+        })()
+        setRender({which: "original", render: originalContent})
+    }, [])
+
+    useEffect(() => {
+
+        const buildRelation = () => {
+            campus.forEach((block) => {
+                block.names.forEach((name) => {
+                    names[name] = block.id
+                }) 
+                block.facilities.forEach((facility) => {
+                    const check = facilities[facility] || []
+                    facilities[facility] = [...check, block.id]
+                })
+            })
+
+        }
+
+        buildRelation()
+    }, [])
+
+
+    useEffect(() => {
+
+        setRender(render.which === "search" ? {which: "search", render: searchContent} : {which: "original", render: originalContent})
+    }, [searchData])
+
     const originalContent = (
         <BottomSheetScrollView style= {styles.scrollContainer}>
             <BottomSheetView style= {styles.libraryContainer}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
                     <Text style= {styles.libraryTitleText}>Library</Text>
                 </BottomSheetView>
-                <BottomSheetScrollView style= {styles.libraryBoxScrollContainer} horizontal>
-                    {data.map(libraryRenderItem)}
-                </BottomSheetScrollView>
+                <LibraryComponent content= {data}/>
             </BottomSheetView>
 
             <BottomSheetView style= {styles.recentContainer}>
@@ -280,9 +316,7 @@ export const Main = () => {
                         </TouchableOpacity>
                     </BottomSheetView>
                 </BottomSheetView>
-                <BottomSheetView style= {styles.recentBoxViewContainer}>
-                    {recentData.map(recentRenderItem)}
-                </BottomSheetView>
+                <RecentComponent content= {recentData}/>
             </BottomSheetView>
 
             <TouchableOpacity>
@@ -315,9 +349,7 @@ export const Main = () => {
                 <BottomSheetView style= {styles.libraryTitleContainer}>
                     <Text style= {styles.libraryTitleText}>Search Result</Text>
                 </BottomSheetView>
-                <BottomSheetView style= {styles.recentBoxViewContainer}>
-                    {searchData.map(recentRenderItem)}
-                </BottomSheetView>
+                <SearchComponent content= {searchData}/>
             </BottomSheetView>
 
         </BottomSheetScrollView>
@@ -334,7 +366,7 @@ export const Main = () => {
                     <BottomSheetView style= {styles.headerContainer}>
                         <BottomSheetView style= {styles.textinputContainer}>
                             <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} onTouchStart= {() => setRender(searchContent)}/>
+                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} onTouchStart= {() => setRender({which: "search", render: searchContent })}/>
                         </BottomSheetView>
                         <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
                             <BottomSheetView>
@@ -343,7 +375,7 @@ export const Main = () => {
                         </TouchableOpacity>
                     </BottomSheetView>
 
-                    {render}
+                    {render.render}
                     
                 </BottomSheet>
 

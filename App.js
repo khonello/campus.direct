@@ -3,8 +3,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Main } from './component/general/sheets';
+// import { Main } from './component/general/tests';
 // import { Main } from './component/capture';
-// import { Main } from './component/test';
 
 export default function App() {
     return (
