@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking, TextInput } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -20,13 +20,13 @@ export const Main = () => {
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
     const campus = [
-        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washrooms", "offices", "labs"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q" },
-        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["offices", "hall"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I" },
-        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "offices"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ" },
-        { id: 4, names: ["as", "applied science"], facilities: ["offices", "hall"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA" },
-        { id: 5, names: ["getfund"], facilities: ["supermarket"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s" },
-        { id: 6, names: ["tennis"], facilities: ["court"], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
-        { id: 7, names: ["basket ball"], facilities: ["court"], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
+        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washroom", "office", "lab"], washroom: ["washroom_1", "washroom_2"], office: ["office_1"], lab: ["lab_1"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q" },
+        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I" },
+        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "office"], library: [], office: ["office_1"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ" },
+        { id: 4, names: ["as", "applied science"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA" },
+        { id: 5, names: ["getfund"], facilities: ["supermarket"], supermarket: [], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s" },
+        { id: 6, names: ["tennis"], facilities: ["court"], court: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
+        { id: 7, names: ["basket ball"], facilities: ["court"], court: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
         { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8" },
         { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0" },
         { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y" },
@@ -36,14 +36,17 @@ export const Main = () => {
         { id: 14, names: ["fhas", "faculty of health and allied science"], facilities: [], officialName: "Faculty of Health and Allied Science", placeID: "ChIJs7TEQwBr3w8RgcqYXb0sLcA" },
         { id: 15, names: ["fbms", "faculty of business and management studies"], facilities: [], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w" },
     ]
+    const facilitiesData = {
+        1: []
+    }
     const [snapPoints, setSnapPoints] = useState(
         ["12%", "30%", "90%"]
     )
     const [render, setRender] = useState({which: "original", render: null}) 
     const [data, setData] = useState(
         [
-            {key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/>},
-            {key: 2, title: "Washroom", content: <Entypo name= "water" size= {20} color= {"white"}/>},
+            { key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/> },
+            { key: 2, title: "Washroom", content: <Entypo name= "water" size= {20} color= {"white"}/> },
         ]
     )
     const [recentData, setRecentData] = useState(
@@ -65,6 +68,8 @@ export const Main = () => {
 
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
+
+    const inputRef = useRef<typeof BottomSheetTextInput>(null)
 
     const profileData = [
         {key: 1, icon: <Entypo name= "grid" size= {30} color= {"#858585"}/>, content: "Library", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
@@ -108,12 +113,10 @@ export const Main = () => {
 
     const performSearch = ( text: string ) => {
 
-        const lowerCase = text.toLowerCase().trim()
+        let lowerCase = text.toLowerCase().trim()
         
         profileRef.current?.close()
         mainRef.current?.expand()
-
-        lowerCase.startsWith("ktu") && lowerCase.replace("ktu", "").trim()
 
         if (text.length > 0) {
 
@@ -124,19 +127,23 @@ export const Main = () => {
             }
             const namesKeys = Object.keys(names)
             const facilitiesKeys = Object.keys(facilities)
+
             const IDsKey: Set<IDKey> = new Set()
             const searches = new Set()
 
             const combineKeys = [...namesKeys, ...facilitiesKeys]
             combineKeys.forEach((key) => {
 
-                if (key.startsWith(lowerCase.trim())) {
+                if (key.startsWith(lowerCase)) {
 
                     const infrastructureID: number = names[key] || facilities[key]
                     if (infrastructureID) {
                         
                         if (Array.isArray(infrastructureID)) {
                             infrastructureID.forEach(id => {
+
+                                    const look = campus.find((item) => item.id === id)[key]
+                                    console.log("found these", ...look)
 
                                 IDsKey.add({ id: id, key: key })
                             });
@@ -145,6 +152,18 @@ export const Main = () => {
                             IDsKey.add({ id: infrastructureID, key: null })
                         }
                     }
+                } else {
+
+                    campus.forEach((block) => {
+                        block.facilities.forEach((facility) => {
+
+                            if (block[facility].includes(lowerCase)) {
+                                
+                                const look = block[facility].find((name) => name === lowerCase)
+                                look && IDsKey.add({ id: block.id, key: `${facility}, ${look}` })
+                            }
+                        })
+                    })
                 }
             })
             IDsKey.forEach((IDkey) => {
@@ -167,7 +186,7 @@ export const Main = () => {
     }
 
     const handleTextInputFinish = () => {
-        // setRender(originalContent)
+
         setRender({which: "original", render: originalContent})
     }
 
@@ -179,11 +198,15 @@ export const Main = () => {
         debouncedSearch(text)
     }
 
+    const handleLibraryItemClick = ( key: number ) => {
+
+        console.log(key)
+    }
 
     const libraryRenderItem = ( item ) => (
 
         <BottomSheetView style= {styles.libraryBoxItemsContainer} key= {item.key.toString()}>
-            <TouchableOpacity style= {{flex: 1}}>
+            <TouchableOpacity style= {{flex: 1}} onPress= {() => handleLibraryItemClick(item.key)}>
                 <BottomSheetView style= {styles.libraryBoxItemContentContainer}>
                     <Text>{item.content}</Text>
                 </BottomSheetView>
@@ -205,9 +228,20 @@ export const Main = () => {
         </BottomSheetView>
     )
 
-    const profileRenderItem = ( item ) => (
+    const searchRenderItem = ( item ) => (
         <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
             <TouchableOpacity>
+                <BottomSheetView style= {{flexDirection: "row"}}>
+                    {item.icon}
+                    <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
+                </BottomSheetView>
+            </TouchableOpacity>
+        </BottomSheetView>
+    )
+
+    const profileRenderItem = ( item ) => (
+        <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
+            <TouchableOpacity onPress= {null}>              
                 <BottomSheetView style= {{flexDirection: "row", alignItems: "center"}}>
                     {item.icon}
                     <BottomSheetView style= {{flex: 1, flexDirection: "row", justifyContent: "space-between"}}>
@@ -233,7 +267,7 @@ export const Main = () => {
 
     const SearchComponent = ( { content } ) => (
         <BottomSheetView style= {styles.recentBoxViewContainer}>
-            {content.map(recentRenderItem)}
+            {content.map(searchRenderItem)}
         </BottomSheetView>
     )
 
@@ -343,6 +377,7 @@ export const Main = () => {
         </BottomSheetScrollView>
     )
     const searchContent = (
+        //
         <BottomSheetScrollView style= {styles.scrollContainer}>
 
             <BottomSheetView style= {{...styles.recentContainer, marginTop: 0}}>
@@ -366,7 +401,7 @@ export const Main = () => {
                     <BottomSheetView style= {styles.headerContainer}>
                         <BottomSheetView style= {styles.textinputContainer}>
                             <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} onTouchStart= {() => setRender({which: "search", render: searchContent })}/>
+                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} onTouchStart= {() => setRender({which: "search", render: searchContent })} ref= {inputRef}/>
                         </BottomSheetView>
                         <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
                             <BottomSheetView>
