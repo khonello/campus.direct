@@ -12,7 +12,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAMqo2YU8n38vEdkk6PME4w4GTp2uA66JU"
+      }
     },
     "android": {
       "adaptiveIcon": {

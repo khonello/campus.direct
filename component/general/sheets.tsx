@@ -1,48 +1,70 @@
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, ImageBackground, Button, Alert, Linking, TextInput } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, TextInput, Keyboard } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { ChevronLeft } from "./svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MapView, { Marker, Circle } from 'react-native-maps';
+import ModalBox from "react-native-modalbox";
+import MapView, { UrlTile, PROVIDER_DEFAULT, Marker, Circle } from 'react-native-maps';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
 import debounce from "lodash.debounce";
 import * as Location from "expo-location";
+import * as FileSystem from "expo-file-system";
+import LottieView from "lottie-react-native";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
 const names = {}
 const facilities = {}
+const animation = require("../../assets/loader.json")
 
 export const Main = () => {
+
+    interface Coord {
+        lat: string,
+        lon: string
+    }
+    interface Place {
+        id: number,
+        names: Array<string>,
+        facilities: Array<string>,
+        officialName: string,
+        placeID: string,
+        coord: Coord
+    }
 
     const insets = useRef(useSafeAreaInsets())
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
     const campus = [
-        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washroom", "office", "lab"], washroom: ["washroom_1", "washroom_2"], office: ["office_1"], lab: ["lab_1"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q" },
-        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I" },
-        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "office"], library: [], office: ["office_1"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ" },
-        { id: 4, names: ["as", "applied science"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA" },
-        { id: 5, names: ["getfund"], facilities: ["supermarket"], supermarket: [], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s" },
-        { id: 6, names: ["tennis"], facilities: ["court"], court: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo" },
-        { id: 7, names: ["basket ball"], facilities: ["court"], court: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI" },
-        { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8" },
-        { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0" },
-        { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y" },
-        { id: 11, names: ["mosque"], facilities: [], officialName: "Central Mosque", placeID: "ChIJA5Bdpltr3w8RthAWfIzH2iI" },
-        { id: 12, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4" },
-        { id: 13, names: ["ad"], facilities: [], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M" },
-        { id: 14, names: ["fhas", "faculty of health and allied science"], facilities: [], officialName: "Faculty of Health and Allied Science", placeID: "ChIJs7TEQwBr3w8RgcqYXb0sLcA" },
-        { id: 15, names: ["fbms", "faculty of business and management studies"], facilities: [], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w" },
+        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washroom", "office", "lab"], washroom: ["washroom_1", "washroom_2"], office: ["office_1"], lab: ["lab_1"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"} },
+        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"} },
+        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "office"], library: [], office: ["office_1"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"} },
+        { id: 4, names: ["as", "applied science"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"} },
+        { id: 5, names: ["getfund"], facilities: ["supermarket"], supermarket: [], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s", coord: {lat: "6.0619622", lon: "-0.2653302"} },
+        { id: 6, names: ["tennis"], facilities: ["court"], court: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo", coord: {lat: "6.0610236", lon: "-0.2641309"} },
+        { id: 7, names: ["basket ball"], facilities: ["court"], court: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI", coord: {lat: "6.065430500000001", lon: "-0.2645425"} },
+        { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8", coord: {lat: "6.0648173", lon: "-0.2654369999999999"} },
+        { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0", coord: {lat: "6.0650265", lon: "-0.2647094"} },
+        { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y", coord: {lat: "6.064370299999999", lon: "-0.2647297"} },
+        { id: 11, names: ["mosque"], facilities: [], officialName: "Central Mosque", placeID: "ChIJA5Bdpltr3w8RthAWfIzH2iI", coord: {lat: "6.0616846", lon: "-0.2659554"} },
+        { id: 12, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4", coord: {lat: "6.065186800000001", lon: "-0.2640584"} },
+        { id: 13, names: ["ad"], facilities: [], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M", coord: {lat: "6.0644443", lon: "-0.2649825"} },
+        { id: 14, names: ["fhas", "faculty of health and allied science"], facilities: [], officialName: "Faculty of Health and Allied Science", placeID: "ChIJs7TEQwBr3w8RgcqYXb0sLcA", coord: {lat: "6.0651838", lon: "-0.2628565"} },
+        { id: 15, names: ["fbms", "faculty of business and management studies"], facilities: [], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w", coord: {lat: "6.065087", lon: "-0.2639526"} },
+        { id: 16, names: ["kitchen"], facilities: [], officialName: "Hospitality Kitchen", placeID: "ChIJlyYZ-IBq3w8RY0WCoEmTkbs", coord: {lat: "6.065131899999999", lon: "-0.2637737"} },
+        { id: 17, names: ["societe generale"], facilities: [], officialName: "Societe Generale Ghana", placeID: "ChIJ93o3o1xr3w8RsSTxJL6cHkw", coord: {lat: "6.0646713", lon: "-0.2649737"} },
     ]
-    const facilitiesData = {
-        1: []
-    }
+
+    const [showAvatar, setShowAvatar] = useState(true)
+    const [showModal, setShowModal] = useState(false)
     const [snapPoints, setSnapPoints] = useState(
         ["12%", "30%", "90%"]
     )
     const [render, setRender] = useState({which: "original", render: null}) 
+    const [textInputValue, setTextInputValue] = useState(null)
+    const [zoomInfo, setZoomInfo] = useState({ zoomLvl: 16, latitude: 6.06181, longitude: -0.26419, latitudeDelta: null, longitudeDelta: null });
     const [data, setData] = useState(
         [
             { key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/> },
@@ -59,18 +81,24 @@ export const Main = () => {
         []
     )
     const [searchData, setSearchData] = useState(
-        [
-
-        ]
+        []
     )
     
     const [profileVisible, setProfileVisible] = useState(false)
+    const [placePosition, setPlacePosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null} } )
+    const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
+    const [currentID, setCurrentID] = useState(-1)
+    const [closetPlaceID, setClosetPlaceID] = useState(null)
 
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
 
     const inputRef = useRef<typeof BottomSheetTextInput>(null)
+    const animationRef = useRef<LottieView>(null)
+    const debouncedDelay = useRef(1000)
 
+    const thunderForestURL = "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=d0051eac5a6b44fabc51ab2f9a669c6e"
+    const openstreetURL = "http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
     const profileData = [
         {key: 1, icon: <Entypo name= "grid" size= {30} color= {"#858585"}/>, content: "Library", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
         {key: 2, icon: <Entypo name= "info" size= {30} color= {"#858585"}/>, content: "Preference", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
@@ -78,21 +106,30 @@ export const Main = () => {
     ]
 
     const debouncedSearch = useMemo(
-        () => debounce((text) => performSearch(text), 1000),
+        () => debounce((text) => performSearch(text), debouncedDelay.current),
     [])
 
     const handleProfilePress = () => {
         
-        if (profileVisible) {
+        setTextInputValue("")
+        if (render.which === "search") {
 
-            setProfileVisible(false)
-            profileRef.current?.close()
+            Keyboard.dismiss()
+            setRender({which: "original", render: originalContent})
+            setShowAvatar(true)
+        } else {
 
-        } else  {
+            if (profileVisible) {
 
-            setProfileVisible(true)
-            profileRef.current?.expand()
-            mainRef.current?.snapToIndex(1)
+                setProfileVisible(false)
+                profileRef.current?.close()
+
+            } else  {
+
+                setProfileVisible(true)
+                profileRef.current?.expand()
+                mainRef.current?.snapToIndex(1)
+            }
         }
 
     }
@@ -185,28 +222,38 @@ export const Main = () => {
         }
     }
 
+    const handleTextInputPress = () => {
+
+        setSearchData([])
+        setShowAvatar(false)
+        setRender({which: "search", render: searchContent})
+    }
+
     const handleTextInputFinish = () => {
 
-        setRender({which: "original", render: originalContent})
+        //
     }
 
     const handleTextInputChange = ( text: string ) => {
 
+        setTextInputValue(text)
         setProfileVisible(false)
         setSearchData([])
-
         debouncedSearch(text)
     }
 
-    const handleLibraryItemClick = ( key: number ) => {
+    const handleLibraryItemClick = ( title: string ) => {
 
-        console.log(key)
+        setTextInputValue(title)
+        handleTextInputPress()
+        debouncedSearch(title)
+
     }
 
     const libraryRenderItem = ( item ) => (
 
         <BottomSheetView style= {styles.libraryBoxItemsContainer} key= {item.key.toString()}>
-            <TouchableOpacity style= {{flex: 1}} onPress= {() => handleLibraryItemClick(item.key)}>
+            <TouchableOpacity style= {{flex: 1}} onPress= {() => handleLibraryItemClick(item.title)}>
                 <BottomSheetView style= {styles.libraryBoxItemContentContainer}>
                     <Text>{item.content}</Text>
                 </BottomSheetView>
@@ -217,7 +264,18 @@ export const Main = () => {
         </BottomSheetView>
     )
 
+    const handleMapRegionChange = ( region, details ) => {
+        
+        const latitudeScale = Math.log2(360 / region.latitudeDelta);
+        const longitudeScale = Math.log2(360 / region.longitudeDelta);
+
+        const zoomLvl = Math.min(latitudeScale, longitudeScale)
+
+        setZoomInfo({ ...zoomInfo, zoomLvl: Math.floor(zoomLvl), latitude: region.latitude, longitude: region.longitude, latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta })
+    }
+
     const recentRenderItem = ( item ) => (
+
         <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
             <TouchableOpacity>
                 <BottomSheetView style= {{flexDirection: "row"}}>
@@ -228,18 +286,96 @@ export const Main = () => {
         </BottomSheetView>
     )
 
-    const searchRenderItem = ( item ) => (
-        <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
-            <TouchableOpacity>
-                <BottomSheetView style= {{flexDirection: "row"}}>
-                    {item.icon}
-                    <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
-                </BottomSheetView>
-            </TouchableOpacity>
-        </BottomSheetView>
-    )
+    const searchRenderItem = ( item ) => {
+
+        interface Item {
+            key: number,
+            icon: string,
+            content: string
+        }
+        const copy: Item = item
+        const split = copy.content.split(",")
+
+        const placeID = campus.find((block) => block.id === copy.key).placeID
+
+        const [block, facility = null, name = null] = split
+        const format = "json"
+        const urlPath = "place/details/"
+        const queryParams = new URLSearchParams(`key=${googleMapsAPIkey}&place_id=${placeID}`)
+        const urlEndpoint = `${googleMapsURL}${urlPath}${format}?${queryParams.toString()}`
+
+        const fetchInfo = () => {
+
+            mainRef.current?.snapToIndex(2)
+            setShowModal(true);
+            setCurrentID(copy.key);
+
+            (async () => {
+ 
+                const response = await fetch(urlEndpoint)
+                if (response.status === 200) {
+
+                    response.json()
+                        .then((value) => {
+                            
+                            const placeGeometry = value.result.geometry
+
+                            setPlacePosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
+                            Location.getCurrentPositionAsync()
+                                .then((location) => {
+                                    
+                                    setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
+                                    setShowModal(false)
+                                    mainRef.current?.snapToIndex(1)
+                                })
+                                .catch((reason) => {
+                                    console.log("error with current position", reason)
+                                })
+                        })
+                        .catch((reason) => {
+                            console.log("error with place position", reason)
+                        })
+ 
+                } else {
+                    animationRef.current.pause()
+                    setShowModal(false)
+                }
+                
+            })()
+        }
+
+        return (
+            <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
+                <TouchableOpacity onPress= {() => fetchInfo()}>
+                    <BottomSheetView style= {{flexDirection: "row"}}>
+                        {item.icon}
+                        <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
+                    </BottomSheetView>
+                </TouchableOpacity>
+            </BottomSheetView>
+        )
+    }
+
+    const findNearestNeighbour = (checkPlace: Place) => {
+
+        const R = 6371000
+        const φ1 = currentPosition.lat * Math.PI / 180
+        const φ2 = parseFloat(checkPlace.coord.lat) * Math.PI / 180
+
+        const Δφ = (parseFloat(checkPlace.coord.lat) - currentPosition.lat) * Math.PI / 180
+        const Δλ = (parseFloat(checkPlace.coord.lon) - currentPosition.lon) * Math.PI / 180
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+
+        return { placeID: checkPlace.placeID, isFar: distance > 10, distance: distance }
+    }
 
     const profileRenderItem = ( item ) => (
+        
         <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
             <TouchableOpacity onPress= {null}>              
                 <BottomSheetView style= {{flexDirection: "row", alignItems: "center"}}>
@@ -271,6 +407,22 @@ export const Main = () => {
         </BottomSheetView>
     )
 
+    const AvatarComponent = () => {
+
+        if (showAvatar) {
+            return (
+                <BottomSheetView>
+                    <Image source= {require("../../assets/avatar.png")} style= {styles.headerProfileImage}/>
+                </BottomSheetView>
+            )
+        }
+        return (
+            <View>
+                <ChevronLeft width={"50"} height= {"40"} color= {"grey"}/>
+            </View>
+        )
+    }
+
     useEffect(() => {
 
         (async () => {
@@ -299,11 +451,6 @@ export const Main = () => {
                 }
             }
 
-            (async () => {
-                
-                const info = await Location.getCurrentPositionAsync()
-                // console.log(info.coords)
-            })()
         })()
         setRender({which: "original", render: originalContent})
     }, [])
@@ -326,13 +473,50 @@ export const Main = () => {
         buildRelation()
     }, [])
 
-
     useEffect(() => {
 
         setRender(render.which === "search" ? {which: "search", render: searchContent} : {which: "original", render: originalContent})
     }, [searchData])
 
+    useEffect(() => {
+        
+        if (textInputValue?.length === 0) {
+            setRender({which: "original", render: originalContent})
+        }
+    }, [recentData])
+
+    useEffect(() => {
+
+        const distances = []
+        if (currentID !== -1) {
+            campus.forEach((place: Place) => {
+
+                const checkNeighbour = findNearestNeighbour(place)
+                checkNeighbour.isFar && distances.push(checkNeighbour)
+            })
+        }
+        distances.sort((a, b) => {
+
+            if (a.distance === b.distance) {
+
+                return 0
+            } else if (a.distance < b.distance) {
+
+                return -1
+            } 
+            return 1
+        })
+        distances.length > 0 && setClosetPlaceID(distances[0])
+
+    }, [currentPosition])
+
+    useEffect(() => {
+
+        console.log(closetPlaceID)
+    }, [closetPlaceID])
+
     const originalContent = (
+
         <BottomSheetScrollView style= {styles.scrollContainer}>
             <BottomSheetView style= {styles.libraryContainer}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
@@ -377,7 +561,7 @@ export const Main = () => {
         </BottomSheetScrollView>
     )
     const searchContent = (
-        //
+
         <BottomSheetScrollView style= {styles.scrollContainer}>
 
             <BottomSheetView style= {{...styles.recentContainer, marginTop: 0}}>
@@ -393,25 +577,30 @@ export const Main = () => {
     return (
         <View style= {styles.container}> 
             <View style= {styles.mapContainer}>
-                <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.0645664, longitude: -0.2653885, latitudeDelta: 0.0922, longitudeDelta: 0.0421}}>
-                    <Marker coordinate= {{latitude: 6.0645664, longitude: -0.2653885}} title= "Hell" description= "Welcome To Hell"/>
+                <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.063400336337259, longitude: -0.26424994084753095, latitudeDelta: 0.005, longitudeDelta: 0.005}} onRegionChangeComplete= {handleMapRegionChange}>
+                    { placePosition.title && <Marker coordinate= {{latitude: placePosition.location.lat, longitude: placePosition.location.lon}} title= {placePosition.title} description= {"Hell"}></Marker> }
+                    { currentPosition.lat && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {"Title"} description= {"Hell"}></Marker> }
+                    <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true} maximumZ= {16}/>
                 </MapView>
+                <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
+                    </View>
+                </ModalBox>
                 <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
-
                     <BottomSheetView style= {styles.headerContainer}>
                         <BottomSheetView style= {styles.textinputContainer}>
                             <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} onTouchStart= {() => setRender({which: "search", render: searchContent })} ref= {inputRef}/>
+                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} value= {textInputValue} ref= {inputRef} onPress= {handleTextInputPress}/>
                         </BottomSheetView>
+
                         <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
-                            <BottomSheetView>
-                                <Image source= {require("../../assets/avatar.png")} style= {styles.headerProfileImage}/>
-                            </BottomSheetView>
+                            <AvatarComponent/>
                         </TouchableOpacity>
+
                     </BottomSheetView>
 
                     {render.render}
-                    
                 </BottomSheet>
 
                 {
@@ -532,7 +721,7 @@ const styles  = StyleSheet.create(
             marginHorizontal: 10,
             borderRadius: 10,
             // borderWidth: 1,
-            minHeight: HEIGHT * 0.11,
+            minHeight: HEIGHT * 0.056,
             backgroundColor: "#E7E7E6",
 
         },
@@ -611,6 +800,14 @@ const styles  = StyleSheet.create(
             marginHorizontal: 10,
             borderRadius: 10,
             backgroundColor: "#E7E7E6",
+        },
+        modalBox: {
+            justifyContent: "center",
+            alignItems: "center",
+            // width: 120,
+            // height: 120,
+            backgroundColor: "transparent",
+            borderRadius: 13
         }
     }
 )
