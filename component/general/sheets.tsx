@@ -64,7 +64,6 @@ export const Main = () => {
     )
     const [render, setRender] = useState({which: "original", render: null}) 
     const [textInputValue, setTextInputValue] = useState(null)
-    const [zoomInfo, setZoomInfo] = useState({ zoomLvl: 16, latitude: 6.06181, longitude: -0.26419, latitudeDelta: null, longitudeDelta: null });
     const [data, setData] = useState(
         [
             { key: 1, title: "Office", content: <Entypo name= "laptop" size= {20} color= {"white"}/> },
@@ -85,7 +84,7 @@ export const Main = () => {
     )
     
     const [profileVisible, setProfileVisible] = useState(false)
-    const [placePosition, setPlacePosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null} } )
+    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null} } )
     const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState(null)
@@ -266,12 +265,7 @@ export const Main = () => {
 
     const handleMapRegionChange = ( region, details ) => {
         
-        const latitudeScale = Math.log2(360 / region.latitudeDelta);
-        const longitudeScale = Math.log2(360 / region.longitudeDelta);
-
-        const zoomLvl = Math.min(latitudeScale, longitudeScale)
-
-        setZoomInfo({ ...zoomInfo, zoomLvl: Math.floor(zoomLvl), latitude: region.latitude, longitude: region.longitude, latitudeDelta: region.latitudeDelta, longitudeDelta: region.longitudeDelta })
+        // 
     }
 
     const recentRenderItem = ( item ) => (
@@ -320,7 +314,7 @@ export const Main = () => {
                             
                             const placeGeometry = value.result.geometry
 
-                            setPlacePosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
+                            setDestinationPosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
                             Location.getCurrentPositionAsync()
                                 .then((location) => {
                                     
@@ -457,20 +451,16 @@ export const Main = () => {
 
     useEffect(() => {
 
-        const buildRelation = () => {
-            campus.forEach((block) => {
-                block.names.forEach((name) => {
-                    names[name] = block.id
-                }) 
-                block.facilities.forEach((facility) => {
-                    const check = facilities[facility] || []
-                    facilities[facility] = [...check, block.id]
-                })
+        campus.forEach((block) => {
+            block.names.forEach((name) => {
+                names[name] = block.id
+            }) 
+            block.facilities.forEach((facility) => {
+                const check = facilities[facility] || []
+                facilities[facility] = [...check, block.id]
             })
+        })
 
-        }
-
-        buildRelation()
     }, [])
 
     useEffect(() => {
@@ -578,7 +568,7 @@ export const Main = () => {
         <View style= {styles.container}> 
             <View style= {styles.mapContainer}>
                 <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.063400336337259, longitude: -0.26424994084753095, latitudeDelta: 0.005, longitudeDelta: 0.005}} onRegionChangeComplete= {handleMapRegionChange}>
-                    { placePosition.title && <Marker coordinate= {{latitude: placePosition.location.lat, longitude: placePosition.location.lon}} title= {placePosition.title} description= {"Hell"}></Marker> }
+                    { destinationPosition.title && <Marker coordinate= {{latitude: destinationPosition.location.lat, longitude: destinationPosition.location.lon}} title= {destinationPosition.title} description= {"Hell"}></Marker> }
                     { currentPosition.lat && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {"Title"} description= {"Hell"}></Marker> }
                     <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true} maximumZ= {16}/>
                 </MapView>
