@@ -39,7 +39,10 @@ const MainScreen = () => {
         coord: Coord
     }
 
-    const SubContainerStack = createStackNavigator()
+    const ProfileContainerStack = createStackNavigator()
+    const BlockContainerStack = createStackNavigator()
+    
+    const [recentStackData, setRecentStackData] = useState(null)
     
     const insets = useRef(useSafeAreaInsets())
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
@@ -105,10 +108,11 @@ const MainScreen = () => {
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState(null)
     const [backgroundID, setBackgroundID] = useState(0)
-    const [backgroundContent, setBackgroundContent] = useState(null)
+    // const [backgroundContent, setBackgroundContent] = useState(null)
 
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
+    const recentNavigateRef = useRef(null)
 
     const inputRef = useRef<typeof BottomSheetTextInput>(null)
     const animationRef = useRef<LottieView>(null)
@@ -175,6 +179,7 @@ const MainScreen = () => {
     const performSearch = ( text: string ) => {
 
         let lowerCase = text.toLowerCase().trim()
+        setRecentData([])
         
         profileRef.current?.close()
         mainRef.current?.expand()
@@ -230,9 +235,11 @@ const MainScreen = () => {
             IDsKey.forEach((IDkey) => {
 
                 const infrastructure = campus.find((item) => item.id == IDkey.id)
-                setRecentData((prevData) => (
-                    [ ...prevData.filter((obj) => obj.key !== IDkey.id), {key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""} ]
-                ))
+                infrastructure.facilities.forEach((value, index) => {
+                    setRecentData((prevData) => (
+                        [...prevData, {key: index, content: value}]
+                    ))
+                })
 
                 searches.add(JSON.stringify({key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""}))
             })
@@ -304,18 +311,25 @@ const MainScreen = () => {
 
         setMapRegion(adjustedRegion);
     }
+    
+    const handleRecentRenderItemClick = ( item ) => {
+        
+        recentNavigateRef.current?.navigate(item.content)
+    }
 
-    const recentRenderItem = ( item ) => (
+    const recentRenderItem = ( item ) => {
 
-        <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
-            <TouchableOpacity>
-                <BottomSheetView style= {{flexDirection: "row"}}>
-                    {item.icon}
-                    <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
-                </BottomSheetView>
-            </TouchableOpacity>
-        </BottomSheetView>
-    )
+        return (
+            <BottomSheetView style= {{...styles.recentItemContainer, backgroundColor: "#E7E7E6"}} key= {item.key}>
+                <TouchableOpacity onPress= {() => handleRecentRenderItemClick(item)}>
+                    <BottomSheetView style= {{flexDirection: "row"}}>
+                        {item.icon}
+                        <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
+                    </BottomSheetView>
+                </TouchableOpacity>
+            </BottomSheetView>
+        )
+    }
 
     const searchRenderItem = ( item ) => {
 
@@ -420,11 +434,17 @@ const MainScreen = () => {
             </BottomSheetView>
     )
 
-    const RecentComponent = ( { content } ) => (
-        <BottomSheetView style= {styles.recentBoxViewContainer}>
-            {content.map(recentRenderItem)}
-        </BottomSheetView>
-    )
+    const RecentComponent = ( content  ) => {
+
+        const navigation = content.navigation
+        const recentC = content.route.params.content
+
+        recentNavigateRef.current = navigation
+
+        return (
+            recentC.map(recentRenderItem)
+        )
+    }
 
     const LibraryComponent = ( { content } ) => (
         <BottomSheetScrollView style= {styles.libraryBoxScrollContainer} horizontal>
@@ -485,7 +505,7 @@ const MainScreen = () => {
 
         const handleEnd = () => {
             carouselRef.current?.scrollTo({ index: 5, animated: true });
-        };
+        }
         
         const handleSnap = (index) => {
             setActiveIndex(index)
@@ -573,6 +593,37 @@ const MainScreen = () => {
         )
     }
 
+    const DynamicRecentStack = ({ recentD }) => {
+
+        const height = (HEIGHT * 0.056) * recentD.length
+        const components = []
+
+        recentD.forEach((obj) => {
+            components.push(
+                () => {
+                    return (
+                        <TouchableOpacity onPress= {() => recentNavigateRef.current?.goBack()} style= {{backgroundColor: "red"}}>
+                            <Text>{obj.content}</Text>
+                        </TouchableOpacity>
+                    )
+                }
+            )
+        })
+        console.log(components)
+        return (
+            <View style= {{...styles.recentBoxViewContainer, height: height, backgroundColor: "purple"}}>
+                    <BlockContainerStack.Navigator screenOptions= {{headerShown: false}}>
+                        <BlockContainerStack.Screen name= "main" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
+                        {
+                            recentD.map((obj, index) => (
+                                <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
+                            ))
+                        }
+                    </BlockContainerStack.Navigator>
+            </View>
+        )
+    }
+
     useEffect(() => {
 
         (async () => {
@@ -629,6 +680,7 @@ const MainScreen = () => {
         if (textInputValue?.length === 0) {
             setRender({which: "original", render: originalContent})
         }
+
     }, [recentData])
 
     useEffect(() => {
@@ -680,6 +732,15 @@ const MainScreen = () => {
         }
     }, [backgroundID])
 
+    useEffect(() => {
+
+        // console.log(recentStackData)
+    }, [recentStackData])
+    // useEffect(() => {
+
+    //     console.log(destinationPosition)
+    // }, [destinationPosition])
+
     const originalContent = (
 
         <BottomSheetScrollView style= {styles.scrollContainer}>
@@ -690,16 +751,15 @@ const MainScreen = () => {
                 <LibraryComponent content= {data}/>
             </BottomSheetView>
 
-            <BottomSheetView style= {styles.recentContainer}>
+            <BottomSheetView style= {{...styles.facilityContainer}}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
                     <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
-                        <Text style= {styles.libraryTitleText}>Recent</Text>
-                        <TouchableOpacity onPress= {() => setRecentData([])}>
-                            <Text style= {{...styles.libraryTitleText, paddingRight: 10}}>Clear</Text>
-                        </TouchableOpacity>
+                        <Text style= {styles.libraryTitleText}>Block Facility</Text>
                     </BottomSheetView>
                 </BottomSheetView>
-                <RecentComponent content= {recentData}/>
+
+                <DynamicRecentStack recentD={recentData}/>
+
             </BottomSheetView>
 
             <TouchableOpacity>
@@ -729,7 +789,7 @@ const MainScreen = () => {
 
         <BottomSheetScrollView style= {styles.scrollContainer}>
 
-            <BottomSheetView style= {{...styles.recentContainer, marginTop: 0}}>
+            <BottomSheetView style= {{...styles.facilityContainer, marginTop: 0}}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
                     <Text style= {styles.libraryTitleText}>Search Result</Text>
                 </BottomSheetView>
@@ -783,12 +843,12 @@ const MainScreen = () => {
                                     </TouchableOpacity>
                                 </BottomSheetView>
                                 <BottomSheetView style= {styles.profileSheetContentContainer}>
-                                    <SubContainerStack.Navigator screenOptions= {{headerShown: false}}>
-                                        <SubContainerStack.Screen name="main" component= {ProfileMainScreen} />
-                                        <SubContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
-                                        <SubContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
-                                        <SubContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
-                                    </SubContainerStack.Navigator>
+                                    <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
+                                        <ProfileContainerStack.Screen name="main" component= {ProfileMainScreen} />
+                                        <ProfileContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
+                                        <ProfileContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
+                                        <ProfileContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
+                                    </ProfileContainerStack.Navigator>
                                 </BottomSheetView>
                             </BottomSheetView>
                         </BottomSheet>
@@ -899,7 +959,7 @@ const styles  = StyleSheet.create(
             backgroundColor: "#E7E7E6",
 
         },
-        recentContainer: {
+        facilityContainer: {
             marginTop: 20,
             flexDirection: "column",
         },
