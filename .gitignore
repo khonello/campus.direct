@@ -38,3 +38,4 @@ yarn-error.*
 .env
 
 tests.tsx
+svg.tsx

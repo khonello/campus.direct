@@ -1,25 +1,30 @@
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, TextInput, Keyboard } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { ChevronLeft } from "./svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { createStackNavigator } from '@react-navigation/stack';
 import ModalBox from "react-native-modalbox";
-import MapView, { UrlTile, PROVIDER_DEFAULT, Marker, Circle } from 'react-native-maps';
+import MapView, { UrlTile, PROVIDER_DEFAULT, Marker, Circle, Region } from 'react-native-maps';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
+import LottieView from "lottie-react-native";
+import Carousel from "react-native-reanimated-carousel";
 import debounce from "lodash.debounce";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
-import LottieView from "lottie-react-native";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
+const ITEM_WIDTH = WIDTH * 0.8
+const ITEM_HEIGHT = HEIGHT * 0.37
+
 const names = {}
 const facilities = {}
 const animation = require("../../assets/loader.json")
 
-export const Main = () => {
+const MainScreen = () => {
 
     interface Coord {
         lat: string,
@@ -34,6 +39,8 @@ export const Main = () => {
         coord: Coord
     }
 
+    const SubContainerStack = createStackNavigator()
+    
     const insets = useRef(useSafeAreaInsets())
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
@@ -60,7 +67,7 @@ export const Main = () => {
     const [showAvatar, setShowAvatar] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [snapPoints, setSnapPoints] = useState(
-        ["12%", "30%", "90%"]
+        ["12%"]
     )
     const [render, setRender] = useState({which: "original", render: null}) 
     const [textInputValue, setTextInputValue] = useState(null)
@@ -70,6 +77,14 @@ export const Main = () => {
             { key: 2, title: "Washroom", content: <Entypo name= "water" size= {20} color= {"white"}/> },
         ]
     )
+    const [mapRegion, setMapRegion] = useState<Region>(
+        {
+            latitude: 6.063400336337259,
+            longitude: -0.26424994084753095,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+        }
+    );
     const [recentData, setRecentData] = useState(
         // Array.from(
         //     {length: 2},
@@ -84,10 +99,13 @@ export const Main = () => {
     )
     
     const [profileVisible, setProfileVisible] = useState(false)
+    const [profileClicked, setProfileClicked] = useState(null)
     const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null} } )
     const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState(null)
+    const [backgroundID, setBackgroundID] = useState(0)
+    const [backgroundContent, setBackgroundContent] = useState(null)
 
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
@@ -99,14 +117,21 @@ export const Main = () => {
     const thunderForestURL = "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=d0051eac5a6b44fabc51ab2f9a669c6e"
     const openstreetURL = "http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
     const profileData = [
-        {key: 1, icon: <Entypo name= "grid" size= {30} color= {"#858585"}/>, content: "Library", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
+        {key: 1, icon:<Entypo name= "grid" size= {30} color= {"#858585"}/>, content:  "Library", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
         {key: 2, icon: <Entypo name= "info" size= {30} color= {"#858585"}/>, content: "Preference", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
         {key: 3, icon: <Entypo name= "arrow-left" size= {30} color= {"#858585"}/>, content: "Logout", arrow: <Entypo name= "chevron-small-left" size= {20} color= {"#858585"}/>}
     ]
 
+    const minZoomLevel = 0.005; // Adjust this value to set the minimum zoom level
+    const maxLatitude = 6.07; // Set the maximum latitude for the restricted area
+    const minLatitude = 6.05; // Set the minimum latitude for the restricted area
+    const maxLongitude = -0.26; // Set the maximum longitude for the restricted area
+    const minLongitude = -0.27; // Set the minimum longitude for the restricted area
+
     const debouncedSearch = useMemo(
         () => debounce((text) => performSearch(text), debouncedDelay.current),
     [])
+    const profileScreenNav = useRef(null)
 
     const handleProfilePress = () => {
         
@@ -243,9 +268,9 @@ export const Main = () => {
 
     const handleLibraryItemClick = ( title: string ) => {
 
-        setTextInputValue(title)
-        handleTextInputPress()
-        debouncedSearch(title)
+        // setTextInputValue(title)
+        // handleTextInputPress()
+        // debouncedSearch(title)
 
     }
 
@@ -263,9 +288,21 @@ export const Main = () => {
         </BottomSheetView>
     )
 
-    const handleMapRegionChange = ( region, details ) => {
+    const handleMapRegionChange = ( region: Region, details ) => {
         
-        // 
+        let adjustedRegion = { ...region };
+
+        // Restrict zoom level
+        if (region.latitudeDelta > minZoomLevel || region.longitudeDelta > minZoomLevel) {
+            adjustedRegion.latitudeDelta = minZoomLevel;
+            adjustedRegion.longitudeDelta = minZoomLevel;
+        }
+
+        // Restrict panning
+        adjustedRegion.latitude = Math.min(Math.max(region.latitude, minLatitude), maxLatitude);
+        adjustedRegion.longitude = Math.min(Math.max(region.longitude, minLongitude), maxLongitude);
+
+        setMapRegion(adjustedRegion);
     }
 
     const recentRenderItem = ( item ) => (
@@ -370,17 +407,17 @@ export const Main = () => {
 
     const profileRenderItem = ( item ) => (
         
-        <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
-            <TouchableOpacity onPress= {null}>              
-                <BottomSheetView style= {{flexDirection: "row", alignItems: "center"}}>
-                    {item.icon}
-                    <BottomSheetView style= {{flex: 1, flexDirection: "row", justifyContent: "space-between"}}>
-                        <Text style= {{paddingLeft: 10, paddingTop: 5, color: "#858585"}}>{item.content}</Text>
-                        {item.arrow}
+            <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
+                <TouchableOpacity onPress= {() => setProfileClicked(item.content)}>              
+                    <BottomSheetView style= {{flexDirection: "row", alignItems: "center"}}>
+                        {item.icon}
+                        <BottomSheetView style= {{flex: 1, flexDirection: "row", justifyContent: "space-between"}}>
+                            <Text style= {{paddingLeft: 10, paddingTop: 5, color: "#858585"}}>{item.content}</Text>
+                            {item.arrow}
+                        </BottomSheetView>
                     </BottomSheetView>
-                </BottomSheetView>
-            </TouchableOpacity>
-        </BottomSheetView>
+                </TouchableOpacity>
+            </BottomSheetView>
     )
 
     const RecentComponent = ( { content } ) => (
@@ -414,6 +451,125 @@ export const Main = () => {
             <View>
                 <ChevronLeft width={"50"} height= {"40"} color= {"grey"}/>
             </View>
+        )
+    }
+
+    const MapviewComponent = () => {
+
+        useEffect(() => {
+            return () => {
+                setBackgroundID(0)
+            }
+        }, [])
+
+        return (
+            <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.063400336337259, longitude: -0.26424994084753095, latitudeDelta: 0.005, longitudeDelta: 0.005}} region= {mapRegion} onRegionChangeComplete= {handleMapRegionChange} minZoomLevel= {16}>
+                { destinationPosition.title && <Marker coordinate= {{latitude: destinationPosition.location.lat, longitude: destinationPosition.location.lon}} title= {destinationPosition.title} description= {"Hell"}></Marker> }
+                { currentPosition.lat && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {"Title"} description= {"Hell"}></Marker> }
+                <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true} maximumZ= {16}/>
+            </MapView>
+        )
+    }
+
+    const CarouselComponent = () => {
+
+        const data = [...new Array(6).keys()];
+        const carouselRef = useRef(null);
+        const insets = useSafeAreaInsets()
+
+        const [activeIndex, setActiveIndex] = useState(0)
+
+        const handleNext = () => {
+            carouselRef.current?.next();
+        };
+
+        const handleEnd = () => {
+            carouselRef.current?.scrollTo({ index: 5, animated: true });
+        };
+        
+        const handleSnap = (index) => {
+            setActiveIndex(index)
+        }
+
+        const renderItem = ( {item} ) => {
+            return (
+                <View style= {carouselStyles.content}>
+                    <ImageBackground /* source= {require("../../assets/img/favicon.png")} */style= {carouselStyles.imageBackground}>
+                        <Text>Hello World</Text>
+                    </ImageBackground>
+                </View>
+            )
+        }
+
+        useEffect(() => {
+            return () => {
+                setBackgroundID(1)
+            }
+        }, [])
+
+        return (
+            <View style={styles.container}>
+                <View style={carouselStyles.carouselContainer}>
+                    <Carousel loop width= {ITEM_WIDTH} height= {ITEM_HEIGHT} data= {data} renderItem= {renderItem} onSnapToItem= {handleSnap} style= {carouselStyles.carousel} ref= {carouselRef} />
+                </View>
+                <View style={carouselStyles.buttons}>
+                    <Button title= "Next" onPress= {handleNext}/>
+                    <Button title= "End" onPress= {handleEnd}/>
+                </View>
+            </View>
+        )
+
+    }
+
+    const ProfileMainScreen = ( {navigation} ) => {
+
+        profileScreenNav.current = navigation
+        return (
+            <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                {profileData.map(profileRenderItem)}
+            </BottomSheetView>
+        )
+    }
+
+    const ProfileLibraryScreen = ( {navigation} ) => {
+
+        const change = () => {
+            navigation.goBack()
+        }
+        return (
+            <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                <TouchableOpacity onPress= {change}>
+                    <Text>Library</Text>
+                </TouchableOpacity>
+            </BottomSheetView>
+        )
+    }
+    
+    const ProfilePreferenceScreen = ( {navigation} ) => {
+
+        const change = () => {
+            navigation.goBack()
+        }
+        return (
+            <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                <TouchableOpacity onPress= {change}>
+                    <Text>Preference</Text>
+                </TouchableOpacity>
+            </BottomSheetView>
+        )
+    }
+
+    const ProfileLogoutScreen = ( {navigation} ) => {
+
+        const change = () => {
+            navigation.goBack()
+        }
+        return (
+            <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                <TouchableOpacity onPress= {change}>
+                    <Text>Logout</Text>
+                </TouchableOpacity>
+            </BottomSheetView>
         )
     }
 
@@ -505,6 +661,25 @@ export const Main = () => {
         console.log(closetPlaceID)
     }, [closetPlaceID])
 
+    useEffect(() => {
+
+        profileClicked && profileScreenNav.current?.navigate(profileClicked.toLowerCase())
+        setProfileClicked(null)
+    }, [profileClicked])
+
+    useEffect(() => {
+        console.log("change made!")
+        if (backgroundID === 0) {
+            setSnapPoints(
+                ["12%", "30%", "90%"]
+            )
+        } else {
+            setSnapPoints(
+                ["65%", "90%"]
+            )
+        }
+    }, [backgroundID])
+
     const originalContent = (
 
         <BottomSheetScrollView style= {styles.scrollContainer}>
@@ -567,11 +742,7 @@ export const Main = () => {
     return (
         <View style= {styles.container}> 
             <View style= {styles.mapContainer}>
-                <MapView style= {{flex: 1}} initialRegion= {{latitude: 6.063400336337259, longitude: -0.26424994084753095, latitudeDelta: 0.005, longitudeDelta: 0.005}} onRegionChangeComplete= {handleMapRegionChange}>
-                    { destinationPosition.title && <Marker coordinate= {{latitude: destinationPosition.location.lat, longitude: destinationPosition.location.lon}} title= {destinationPosition.title} description= {"Hell"}></Marker> }
-                    { currentPosition.lat && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {"Title"} description= {"Hell"}></Marker> }
-                    <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true} maximumZ= {16}/>
-                </MapView>
+                <MapviewComponent/>
                 <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
                     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                         <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
@@ -612,9 +783,12 @@ export const Main = () => {
                                     </TouchableOpacity>
                                 </BottomSheetView>
                                 <BottomSheetView style= {styles.profileSheetContentContainer}>
-                                        <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                                            {profileData.map(profileRenderItem)}
-                                        </BottomSheetView>
+                                    <SubContainerStack.Navigator screenOptions= {{headerShown: false}}>
+                                        <SubContainerStack.Screen name="main" component= {ProfileMainScreen} />
+                                        <SubContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
+                                        <SubContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
+                                        <SubContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
+                                    </SubContainerStack.Navigator>
                                 </BottomSheetView>
                             </BottomSheetView>
                         </BottomSheet>
@@ -625,12 +799,22 @@ export const Main = () => {
     )
 }
 
-
+export const Main = () => {
+    const MainContainerStack = createStackNavigator();
+    const options = {
+        headerShown: false
+    }
+    return (
+        <MainContainerStack.Navigator screenOptions= {options}>
+            <MainContainerStack.Screen name="Main" component= {MainScreen} />
+        </MainContainerStack.Navigator>
+    )
+}
 const styles  = StyleSheet.create(
     {
         container: {
             flex: 1,
-            justifyContent: "center",
+            // justifyContent: "center",
         },
         mapContainer: {
             flex: 1,
@@ -801,3 +985,37 @@ const styles  = StyleSheet.create(
         }
     }
 )
+
+const carouselStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+        justifyContent: 'space-between',
+    },
+    content: {
+        aspectRatio: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        marginRight: 20,
+        borderWidth: 1,
+        borderRadius: 5,
+    },
+    carouselContainer: {
+        height: ITEM_HEIGHT
+    },
+    carousel: {
+        width: WIDTH
+    },
+    buttons: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        minHeight: 50,
+    },
+    imageBackground: {
+        width: ITEM_WIDTH * 0.9,
+        height: ITEM_HEIGHT * 0.9,
+        justifyContent: "center",
+        alignItems: "center",
+    }
+
+})
