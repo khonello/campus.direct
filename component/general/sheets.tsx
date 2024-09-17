@@ -1,12 +1,16 @@
-import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard } from "react-native";
+import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView, TextInput } from "react-native";
 import { Entypo } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import { Asset } from "expo-asset";
+import { Session } from '@supabase/supabase-js';
 import { ChevronLeft } from "./svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createStackNavigator } from '@react-navigation/stack';
+import { useNavigationState } from "@react-navigation/native"
+import { supabase } from '../../config/supabase';
 import ModalBox from "react-native-modalbox";
-import MapView, { UrlTile, PROVIDER_DEFAULT, Marker, Circle, Region } from 'react-native-maps';
-import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import MapView, { UrlTile, Marker, Circle, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, createContext, useContext } from "react";
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
 import LottieView from "lottie-react-native";
@@ -14,6 +18,8 @@ import Carousel from "react-native-reanimated-carousel";
 import debounce from "lodash.debounce";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session"
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
@@ -24,7 +30,11 @@ const names = {}
 const facilities = {}
 const animation = require("../../assets/loader.json")
 
-const MainScreen = () => {
+const illustrationAssert = Asset.fromModule(require("../../assets/signin.png"))
+const googleAssert = Asset.fromModule(require("../../assets/google.png"))
+const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
+
+const MainScreen = ( {navigation} ) => {
 
     interface Coord {
         lat: string,
@@ -39,11 +49,12 @@ const MainScreen = () => {
         coord: Coord
     }
 
+    const Context = createContext(true)
+
     const ProfileContainerStack = createStackNavigator()
     const BlockContainerStack = createStackNavigator()
-    
-    const [recentStackData, setRecentStackData] = useState(null)
-    
+    const RealDealContainerStack = createStackNavigator()
+     
     const insets = useRef(useSafeAreaInsets())
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
@@ -108,7 +119,8 @@ const MainScreen = () => {
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState(null)
     const [backgroundID, setBackgroundID] = useState(0)
-    // const [backgroundContent, setBackgroundContent] = useState(null)
+
+    // const [isRecentMain, setIsRecentMain] = useState(false)
 
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
@@ -132,6 +144,8 @@ const MainScreen = () => {
     const maxLongitude = -0.26; // Set the maximum longitude for the restricted area
     const minLongitude = -0.27; // Set the minimum longitude for the restricted area
 
+    const [hide, setHide] = useState(true)
+
     const debouncedSearch = useMemo(
         () => debounce((text) => performSearch(text), debouncedDelay.current),
     [])
@@ -139,6 +153,8 @@ const MainScreen = () => {
 
     const handleProfilePress = () => {
         
+        // setHide((state) => true)
+
         setTextInputValue("")
         if (render.which === "search") {
 
@@ -164,22 +180,26 @@ const MainScreen = () => {
 
     const handleProfileClose = () => {
 
+        // setHide((state) => false)
+        
         setProfileVisible(false)
         profileRef.current?.close()
         mainRef.current?.expand()
     }
 
     const handleMainChange = ( index: number ) => {
+        
         if (index == 0) {
             setProfileVisible(false)
             profileRef.current?.close()
+
         }
     }
 
     const performSearch = ( text: string ) => {
 
         let lowerCase = text.toLowerCase().trim()
-        setRecentData([])
+        // setRecentData([])
         
         profileRef.current?.close()
         mainRef.current?.expand()
@@ -235,11 +255,11 @@ const MainScreen = () => {
             IDsKey.forEach((IDkey) => {
 
                 const infrastructure = campus.find((item) => item.id == IDkey.id)
-                infrastructure.facilities.forEach((value, index) => {
-                    setRecentData((prevData) => (
-                        [...prevData, {key: index, content: value}]
-                    ))
-                })
+                // infrastructure.facilities.forEach((value, index) => {
+                //     setRecentData((prevData) => (
+                //         [...prevData, {key: index, content: value}]
+                //     ))
+                // })
 
                 searches.add(JSON.stringify({key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""}))
             })
@@ -275,9 +295,9 @@ const MainScreen = () => {
 
     const handleLibraryItemClick = ( title: string ) => {
 
-        // setTextInputValue(title)
-        // handleTextInputPress()
-        // debouncedSearch(title)
+        setTextInputValue(title)
+        handleTextInputPress()
+        debouncedSearch(title)
 
     }
 
@@ -351,42 +371,42 @@ const MainScreen = () => {
 
         const fetchInfo = () => {
 
-            mainRef.current?.snapToIndex(2)
-            setShowModal(true);
+            // mainRef.current?.snapToIndex(2)
+            // setShowModal(true);
             setCurrentID(copy.key);
 
-            (async () => {
+            // (async () => {
  
-                const response = await fetch(urlEndpoint)
-                if (response.status === 200) {
+                // const response = await fetch(urlEndpoint)
+                // if (response.status === 200) {
 
-                    response.json()
-                        .then((value) => {
+                //     response.json()
+                //         .then((value) => {
                             
-                            const placeGeometry = value.result.geometry
+                //             const placeGeometry = value.result.geometry
 
-                            setDestinationPosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
-                            Location.getCurrentPositionAsync()
-                                .then((location) => {
+                //             setDestinationPosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
+                //             Location.getCurrentPositionAsync()
+                //                 .then((location) => {
                                     
-                                    setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
-                                    setShowModal(false)
-                                    mainRef.current?.snapToIndex(1)
-                                })
-                                .catch((reason) => {
-                                    console.log("error with current position", reason)
-                                })
-                        })
-                        .catch((reason) => {
-                            console.log("error with place position", reason)
-                        })
+                //                     setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
+                //                     setShowModal(false)
+                //                     mainRef.current?.snapToIndex(1)
+                //                 })
+                //                 .catch((reason) => {
+                //                     console.log("error with current position", reason)
+                //                 })
+                //         })
+                //         .catch((reason) => {
+                //             console.log("error with place position", reason)
+                        // })
  
-                } else {
-                    animationRef.current.pause()
-                    setShowModal(false)
-                }
+            //     } else {
+            //         animationRef.current.pause()
+            //         setShowModal(false)
+            //     }
                 
-            })()
+            // })()
         }
 
         return (
@@ -595,32 +615,72 @@ const MainScreen = () => {
 
     const DynamicRecentStack = ({ recentD }) => {
 
+
         const height = (HEIGHT * 0.056) * recentD.length
         const components = []
 
         recentD.forEach((obj) => {
+
             components.push(
                 () => {
+
+                    const facilities = campus.find((item) => item.id === currentID)[obj.content.toLowerCase()]
+                    // const currentFacilityName = useNavigationState(state => state.routes[state.routes.length - 1])
+
                     return (
-                        <TouchableOpacity onPress= {() => recentNavigateRef.current?.goBack()} style= {{backgroundColor: "red"}}>
-                            <Text>{obj.content}</Text>
-                        </TouchableOpacity>
+                        <>
+                            {
+                                facilities.map((facility, id) => (
+                                    <BottomSheetView style= {{...styles.recentItemContainer, backgroundColor: "#E7E7E6"}} key= {id}>
+                                        <TouchableOpacity>
+                                                <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
+                                                    <TouchableOpacity>
+                                                        <Text style= {{paddingLeft: 10, paddingRight: 100, paddingTop: 5}}>{facility.charAt(0).toUpperCase() + facility.slice(1)}</Text>
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity>
+                                                        <Text style= {{paddingLeft: 10, paddingTop: 5}} onPress= {() => recentNavigateRef.current?.goBack()}>Go Back</Text>
+                                                    </TouchableOpacity>
+                                                </BottomSheetView>
+                                        </TouchableOpacity>
+                                </BottomSheetView>
+                                ))
+                            }
+                        </>
                     )
                 }
             )
         })
-        console.log(components)
+        // console.log(showContent)
         return (
-            <View style= {{...styles.recentBoxViewContainer, height: height, backgroundColor: "purple"}}>
-                    <BlockContainerStack.Navigator screenOptions= {{headerShown: false}}>
-                        <BlockContainerStack.Screen name= "main" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
-                        {
-                            recentD.map((obj, index) => (
-                                <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
-                            ))
-                        }
-                    </BlockContainerStack.Navigator>
+            <View style= {{...styles.recentBoxViewContainer, height: height}}>
+                {
+                    hide && (
+                            <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
+                                <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
+                                {
+                                    recentD.map((obj, index) => (
+                                        <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
+                                    ))
+                                }
+                            </BlockContainerStack.Navigator>
+                    )
+                }
             </View>
+        )
+    }
+
+    const DynamicProfileStack = () => {
+
+        return (
+            <BottomSheetView style= {styles.profileSheetContentContainer}>
+                {/* <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
+                    <ProfileContainerStack.Screen name="main" component= {ProfileMainScreen} />
+                    <ProfileContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
+                    <ProfileContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
+                    <ProfileContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
+                </ProfileContainerStack.Navigator> */}
+                <Text>Hello World</Text>
+            </BottomSheetView>
         )
     }
 
@@ -681,7 +741,7 @@ const MainScreen = () => {
             setRender({which: "original", render: originalContent})
         }
 
-    }, [recentData])
+    }, [recentData, hide])
 
     useEffect(() => {
 
@@ -733,13 +793,16 @@ const MainScreen = () => {
     }, [backgroundID])
 
     useEffect(() => {
+        
+        setRecentData([])
 
-        // console.log(recentStackData)
-    }, [recentStackData])
-    // useEffect(() => {
-
-    //     console.log(destinationPosition)
-    // }, [destinationPosition])
+        const infrastructure = campus.find((obj) => obj.id === currentID)
+        infrastructure && infrastructure.facilities.forEach((value, index) => {
+            setRecentData((prevData) => (
+                [...prevData, {key: index, content: value.charAt(0).toUpperCase() + value.slice(1)}]
+            ))
+        })
+    }, [currentID])
 
     const originalContent = (
 
@@ -751,14 +814,14 @@ const MainScreen = () => {
                 <LibraryComponent content= {data}/>
             </BottomSheetView>
 
-            <BottomSheetView style= {{...styles.facilityContainer}}>
+            <BottomSheetView style= {{...styles.facilityContainer, minHeight: HEIGHT * 0.09}}>
                 <BottomSheetView style= {styles.libraryTitleContainer}>
                     <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
                         <Text style= {styles.libraryTitleText}>Block Facility</Text>
                     </BottomSheetView>
                 </BottomSheetView>
 
-                <DynamicRecentStack recentD={recentData}/>
+                <DynamicRecentStack recentD= {recentData}/>
 
             </BottomSheetView>
 
@@ -801,46 +864,38 @@ const MainScreen = () => {
 
     return (
         <View style= {styles.container}> 
-            <View style= {styles.mapContainer}>
-                <MapviewComponent/>
-                <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                        <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
-                    </View>
-                </ModalBox>
-                <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
-                    <BottomSheetView style= {styles.headerContainer}>
-                        <BottomSheetView style= {styles.textinputContainer}>
-                            <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
-                            <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} value= {textInputValue} ref= {inputRef} onPress= {handleTextInputPress}/>
+                <View style= {styles.mapContainer}>
+                    <MapviewComponent/>
+                    <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
+                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
+                        </View>
+                    </ModalBox>
+                    <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
+                        <BottomSheetView style= {styles.headerContainer}>
+                            <BottomSheetView style= {styles.textinputContainer}>
+                                <Entypo name= "magnifying-glass" size= {20} color= {"gray"} style= {{ marginRight: 3 }} />
+                                <BottomSheetTextInput placeholder= {"Search Maps"} keyboardAppearance= {"default"} keyboardType= {"ascii-capable"} style= {styles.headerTextInput} clearTextOnFocus onEndEditing= {handleTextInputFinish} onChangeText= {handleTextInputChange} spellCheck= {false} autoCorrect= {false} autoComplete= {"off"} value= {textInputValue} ref= {inputRef} onPress= {handleTextInputPress}/>
+                            </BottomSheetView>
+
+                            <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
+                                <AvatarComponent/>
+                            </TouchableOpacity>
+
                         </BottomSheetView>
 
-                        <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
-                            <AvatarComponent/>
-                        </TouchableOpacity>
+                        {render.render}
+                    </BottomSheet>
 
-                    </BottomSheetView>
-
-                    {render.render}
-                </BottomSheet>
-
-                {
-                    profileVisible && (
-                        <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
-                            <BottomSheetView style= {styles.profileSheetContainer}>
-                                <BottomSheetView style= {styles.profileSheetHeaderContainer}>
-                                    <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
-                                        <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
-                                    </BottomSheetView>
-                                    <BottomSheetView style= {styles.profileSheetHeaderMainContainer}>
-                                        <Text style= {{fontSize: 20, fontWeight: "bold"}}>Firstname Lastname</Text>
-                                        <Text>somebody@email.com</Text>
-                                    </BottomSheetView>
-                                    <TouchableOpacity onPress= {handleProfileClose}>
-                                        <BottomSheetView style= {styles.profileSheetHeaderCloseContainer}>
-                                            <Entypo name= "circle-with-cross" size= {30} color= {"#858585"}/>
+                    {
+                        profileVisible && (
+                            <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
+                                <BottomSheetView style= {styles.profileSheetContainer}>
+                                    <BottomSheetView style= {styles.profileSheetHeaderContainer}>
+                                        <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
+                                            <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
                                         </BottomSheetView>
-                                    </TouchableOpacity>
+                                    </BottomSheetView>
                                 </BottomSheetView>
                                 <BottomSheetView style= {styles.profileSheetContentContainer}>
                                     {/* <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
@@ -853,12 +908,271 @@ const MainScreen = () => {
                                         {profileData.map(profileRenderItem)}
                                     </BottomSheetView>
                                 </BottomSheetView>
-                            </BottomSheetView>
-                        </BottomSheet>
-                    )
-                }
-            </View>
+                            </BottomSheet>
+                        )
+                    }
+                </View>
         </View>
+    )
+}
+
+const TestScreen = () => {
+
+    const TestStack = createStackNavigator()
+    const Test = () => {
+        return (
+            <View>
+                <Text>Hello World</Text>
+            </View>
+        )
+    }
+
+    return (
+        <View>
+            <TestStack.Navigator screenOptions= {{headerShown: false}}>
+                <TestStack.Screen name="main" component= {Test} />
+            </TestStack.Navigator>
+        </View>
+    )
+}
+
+const LoginScreen = ( {navigation} ) => {
+
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [loading, setLoading] = useState(false);
+    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
+    
+
+    const handleSignInWithGmail = async () => {
+         
+        setLoading(true)
+        const response = await supabase.auth.signInWithOAuth({
+
+            provider: "google",
+            options: {
+                redirectTo: redirectUrl
+            }
+        });
+
+        if (response.error) {
+
+            Alert.alert(
+                "Login Failed",
+                response.error.message || "Invalid email or password. Please try again.",
+                [{ text: "OK" }]
+            )
+        } else {
+            // Check user existence and handle signup
+            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
+            if(authSession.type === "success") {
+
+                //
+            }
+
+        }
+        setLoading(false)
+    };
+
+    const handleSignInWithPassword = async () => {
+
+        if (email.length > 0 && password.length > 0) {
+            setLoading(true)
+            const response = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            })
+
+            if (response.error) {
+
+                console.log(response.error.message, loading);
+                Alert.alert(
+                    "Login Failed",
+                    response.error.message || "Invalid email or password. Please try again.",
+                    [{ text: "OK" }]
+                )
+            } else {
+
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    setSession(session)
+                })
+                console.log(response.data.session)
+            }
+            setLoading(false)
+            setEmail(""); setPassword("")
+        }
+    }
+
+    const [session, setSession] = useState<Session | null>(null)
+
+    useEffect(() => {
+
+        supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session)
+        })
+    }, [])
+    useEffect(() => {
+        console.log(session && session.user && session.user.id)
+    }, [session])
+
+    return (
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+            <View style= {authenticateStyles.container}>
+                <View style= {authenticateStyles.content}>
+                    <View style= {authenticateStyles.topContainer}>
+                        <Image source= {illustrationAssert} contentFit= {"cover"} style= {authenticateStyles.illustrationImage}/>
+                    </View>
+                    <View style= {authenticateStyles.bottomContainer}>
+                        <View style= {authenticateStyles.inputContainer}>
+                            <TextInput placeholder= {"Email"} style= {authenticateStyles.textInput} value= {email} onChangeText= {setEmail} clearTextOnFocus keyboardType= {"email-address"}/>
+                            <TextInput placeholder= {"Password"} style= {authenticateStyles.textInput} secureTextEntry clearTextOnFocus value= {password} onChangeText= {setPassword}/>
+                        </View>
+                        <TouchableOpacity style= {authenticateStyles.loginButtonContainer} onPress= {handleSignInWithPassword} disabled= {loading}>
+                            {
+                                !loading ? (<Text style= {authenticateStyles.textStyle}>Login</Text>) : (<Image source= {loadingAssert} style= {{width: loadingAssert.width * 0.5, height: loadingAssert.height * 0.25}}/>)
+                            }
+                        </TouchableOpacity>
+                        <View style= {authenticateStyles.loginWithContainer}>
+                            <View style= {authenticateStyles.horizontalLine}/>
+                            <View style= {authenticateStyles.loginWithTextContainer}>
+                                <Text style= {{fontSize: 12, color: "darkgrey"}}>Or Login With</Text>
+                            </View>
+                            <View style= {authenticateStyles.horizontalLine}/>
+                        </View>
+                        <TouchableOpacity style= {authenticateStyles.googleContainer} onPress= {handleSignInWithGmail}>
+                            <Image source= {googleAssert} style= {authenticateStyles.googleImage}/>
+                            <Text style= {{fontWeight: "bold"}}>Google</Text>
+                        </TouchableOpacity>
+                        <View style= {authenticateStyles.signupTextContainer}>
+                            <Text style= {{color: "darkgrey"}}>You don't have an account ?</Text>
+                            <TouchableOpacity>
+                                <Text style= {{color: "grey", fontWeight: "bold"}}>Signup</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
+    )
+}
+
+const SignUpScreen = ( {navigation} ) => {
+
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [loading, setLoading] = useState(false);
+    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
+
+    const handleSignUpWithGmail = async () => {
+         
+        setLoading(true)
+        const response = await supabase.auth.signInWithOAuth({
+
+            provider: "google",
+            options: {
+                redirectTo: redirectUrl
+            }
+        });
+
+        if (response.error) {
+
+            Alert.alert(
+                "Login Failed",
+                response.error.message || "Invalid email or password. Please try again.",
+                [{ text: "OK" }]
+            )
+        } else {
+            // Check user existence and handle signup
+            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
+            if(authSession.type === "success") {
+
+                //
+            }
+
+        }
+        setLoading(false)
+    };
+
+    const handleSignUpWithPassword = async () => {
+
+        if (email.length > 0 && password.length > 0) {
+            setLoading(true)
+            const response = await supabase.auth.signUp({
+                email: email,
+                password: password
+            })
+
+            if (response.error) {
+
+                console.log(response.error.message, loading);
+                Alert.alert(
+                    "Signup Failed",
+                    response.error.message || "Invalid email or password. Please try again.",
+                    [{ text: "OK" }]
+                )
+            } else {
+
+                Alert.alert(
+                    "Confirm Email",
+                    response.error.message || "Confirmation email sent.",
+                    [{ text: "OK" }]
+                )
+            }
+            setLoading(false)
+            setEmail(""); setPassword("")
+        }
+    }
+
+    const [session, setSession] = useState<Session | null>(null)
+
+    useEffect(() => {
+
+        supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session)
+        })
+    }, [])
+    useEffect(() => {
+        console.log(session && session.user && session.user.id)
+    }, [session])
+
+    return (
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+            <View style= {authenticateStyles.container}>
+                <View style= {authenticateStyles.content}>
+                    <View style= {authenticateStyles.topContainer}>
+                        <Image source= {illustrationAssert} contentFit= {"cover"} style= {authenticateStyles.illustrationImage}/>
+                    </View>
+                    <View style= {authenticateStyles.bottomContainer}>
+                        <View style= {authenticateStyles.inputContainer}>
+                            <TextInput placeholder= {"Email"} style= {authenticateStyles.textInput} value= {email} onChangeText= {setEmail} clearTextOnFocus keyboardType= {"email-address"}/>
+                            <TextInput placeholder= {"Password"} style= {authenticateStyles.textInput} secureTextEntry clearTextOnFocus value= {password} onChangeText= {setPassword}/>
+                        </View>
+                        <TouchableOpacity style= {authenticateStyles.loginButtonContainer} onPress= {handleSignUpWithPassword} disabled= {loading}>
+                            {
+                                !loading ? (<Text style= {authenticateStyles.textStyle}>Signup</Text>) : (<Image source= {loadingAssert} style= {{width: loadingAssert.width * 0.5, height: loadingAssert.height * 0.25}}/>)
+                            }
+                        </TouchableOpacity>
+                        <View style= {authenticateStyles.loginWithContainer}>
+                            <View style= {authenticateStyles.horizontalLine}/>
+                            <View style= {authenticateStyles.loginWithTextContainer}>
+                                <Text style= {{fontSize: 12, color: "darkgrey"}}>Or Signup With</Text>
+                            </View>
+                            <View style= {authenticateStyles.horizontalLine}/>
+                        </View>
+                        <TouchableOpacity style= {authenticateStyles.googleContainer} onPress= {handleSignUpWithGmail}>
+                            <Image source= {googleAssert} style= {authenticateStyles.googleImage}/>
+                            <Text style= {{fontWeight: "bold"}}>Google</Text>
+                        </TouchableOpacity>
+                        <View style= {authenticateStyles.signupTextContainer}>
+                            <Text style= {{color: "darkgrey"}}>You already have an account ?</Text>
+                            <TouchableOpacity>
+                                <Text style= {{color: "grey", fontWeight: "bold"}}>Signin</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </KeyboardAvoidingView>
     )
 }
 
@@ -869,10 +1183,13 @@ export const Main = () => {
     }
     return (
         <MainContainerStack.Navigator screenOptions= {options}>
-            <MainContainerStack.Screen name="Main" component= {MainScreen} />
+            <MainContainerStack.Screen name="master" component= {MainScreen} />
+            <MainContainerStack.Screen name="login" component= {LoginScreen} />
+            <MainContainerStack.Screen name="signup" component= {SignUpScreen} />
         </MainContainerStack.Navigator>
     )
 }
+
 const styles  = StyleSheet.create(
     {
         container: {
@@ -1082,3 +1399,79 @@ const carouselStyles = StyleSheet.create({
     }
 
 })
+
+const authenticateStyles = StyleSheet.create(
+    {
+        container: {
+            flex: 1,
+            justifyContent: "center",
+            alignItems: "center"
+        },
+        content: {
+            flexDirection: "column"
+        },
+        topContainer: {
+            marginBottom: 70
+        },
+        bottomContainer: {
+
+        },
+        illustrationImage: {
+            width: illustrationAssert.width * 0.4,
+            height: illustrationAssert.height * 0.4,
+        },
+        textInput: {
+            paddingLeft: 15,
+            paddingVertical: 10,
+            borderWidth: 1,
+            borderRadius: 7,
+            borderColor: "grey",
+            marginBottom: 20
+        },
+        inputContainer: {
+
+        },
+        loginButtonContainer: {
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "#6A63F6",
+            padding: 10,
+            borderRadius: 7,
+            marginBottom: 10
+        },
+        textStyle: {
+            fontWeight: "bold",
+            color: "white"
+        },
+        loginWithContainer: {
+            flexDirection: "row",
+            paddingTop: 10,
+            paddingBottom: 3,
+            justifyContent: "center",
+            alignItems: "center"
+        },
+        horizontalLine: {
+            flex: 0.4,
+            height: 1,
+            backgroundColor: 'lightgrey',
+        },
+        loginWithTextContainer: {
+            marginHorizontal: 5
+        },
+        googleContainer: {
+            flexDirection: "row",
+            justifyContent: "center",
+            alignItems: "center"
+        },
+        googleImage: {
+            width: googleAssert.width * 0.035,
+            height: googleAssert.height * 0.035
+        },
+        signupTextContainer: {
+            flexDirection: "row",
+            justifyContent: "center",
+            paddingTop: 10
+        }
+
+    }
+)
