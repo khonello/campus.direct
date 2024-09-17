@@ -895,17 +895,20 @@ const MainScreen = ( {navigation} ) => {
                                         <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
                                             <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
                                         </BottomSheetView>
+                                        <BottomSheetView style= {styles.profileSheetHeaderMainContainer}>
+                                            <Text style= {{fontSize: 20, fontWeight: "bold"}}>Firstname Lastname</Text>
+                                            <Text>somebody@email.com</Text>
+                                        </BottomSheetView>
+                                        <TouchableOpacity onPress= {handleProfileClose}>
+                                            <BottomSheetView style= {styles.profileSheetHeaderCloseContainer}>
+                                                <Entypo name= "circle-with-cross" size= {30} color= {"#858585"}/>
+                                            </BottomSheetView>
+                                        </TouchableOpacity>
                                     </BottomSheetView>
-                                </BottomSheetView>
-                                <BottomSheetView style= {styles.profileSheetContentContainer}>
-                                    {/* <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
-                                        <ProfileContainerStack.Screen name="main" component= {ProfileMainScreen} />
-                                        <ProfileContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
-                                        <ProfileContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
-                                        <ProfileContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
-                                    </ProfileContainerStack.Navigator> */}
-                                    <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                                        {profileData.map(profileRenderItem)}
+                                    <BottomSheetView style= {styles.profileSheetContentContainer}>
+                                            <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                                                {profileData.map(profileRenderItem)}
+                                            </BottomSheetView>
                                     </BottomSheetView>
                                 </BottomSheetView>
                             </BottomSheet>
