@@ -843,12 +843,15 @@ const MainScreen = () => {
                                     </TouchableOpacity>
                                 </BottomSheetView>
                                 <BottomSheetView style= {styles.profileSheetContentContainer}>
-                                    <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
+                                    {/* <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
                                         <ProfileContainerStack.Screen name="main" component= {ProfileMainScreen} />
                                         <ProfileContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
                                         <ProfileContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
                                         <ProfileContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
-                                    </ProfileContainerStack.Navigator>
+                                    </ProfileContainerStack.Navigator> */}
+                                    <BottomSheetView style= {styles.profileSheetContentBoxView}>
+                                        {profileData.map(profileRenderItem)}
+                                    </BottomSheetView>
                                 </BottomSheetView>
                             </BottomSheetView>
                         </BottomSheet>
