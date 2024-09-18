@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView, TextInput } from "react-native";
-import { Entypo } from "@expo/vector-icons";
+import { Entypo, AntDesign } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Asset } from "expo-asset";
 import { Session } from '@supabase/supabase-js';
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createStackNavigator } from '@react-navigation/stack';
 import { useNavigationState } from "@react-navigation/native"
 import { supabase } from '../../config/supabase';
+import { getImagekitUrlFromPath } from "../../config/imagekit";
 import ModalBox from "react-native-modalbox";
 import MapView, { UrlTile, Marker, Circle, Region, PROVIDER_DEFAULT } from 'react-native-maps';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, createContext, useContext } from "react";
@@ -19,12 +20,12 @@ import debounce from "lodash.debounce";
 import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session"
+import * as AuthSession from "expo-auth-session";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
 const ITEM_WIDTH = WIDTH * 0.8
-const ITEM_HEIGHT = HEIGHT * 0.37
+const ITEM_HEIGHT = HEIGHT * 0.44
 
 const names = {}
 const facilities = {}
@@ -59,24 +60,20 @@ const MainScreen = ( {navigation} ) => {
     const googleMapsURL = "https://maps.googleapis.com/maps/api/"
     const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
     const campus = [
-        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["washroom", "office", "lab"], washroom: ["washroom_1", "washroom_2"], office: ["office_1"], lab: ["lab_1"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"} },
-        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"} },
-        { id: 3, names: ["ccb", "central classroom block"], facilities: ["library", "office"], library: [], office: ["office_1"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"} },
-        { id: 4, names: ["as", "applied science"], facilities: ["office", "hall"], office: ["office_1"], hall: [], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"} },
-        { id: 5, names: ["getfund"], facilities: ["supermarket"], supermarket: [], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s", coord: {lat: "6.0619622", lon: "-0.2653302"} },
-        { id: 6, names: ["tennis"], facilities: ["court"], court: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo", coord: {lat: "6.0610236", lon: "-0.2641309"} },
-        { id: 7, names: ["basket ball"], facilities: ["court"], court: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI", coord: {lat: "6.065430500000001", lon: "-0.2645425"} },
-        { id: 8, names: ["adb", "agriculture development bank", "atm"], facilities: [], officialName: "Agriculture Development Bank ATM", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8", coord: {lat: "6.0648173", lon: "-0.2654369999999999"} },
-        { id: 9, names: ["gcb", "ghana commercial bank", "atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0", coord: {lat: "6.0650265", lon: "-0.2647094"} },
-        { id: 10, names: ["radio"], facilities: [], officialName: "Radio 87.7Mhz", placeID: "ChIJx_fIG4Fq3w8R50I78KKrX6Y", coord: {lat: "6.064370299999999", lon: "-0.2647297"} },
-        { id: 11, names: ["mosque"], facilities: [], officialName: "Central Mosque", placeID: "ChIJA5Bdpltr3w8RthAWfIzH2iI", coord: {lat: "6.0616846", lon: "-0.2659554"} },
-        { id: 12, names: ["bm", "business management"], facilities: [], officialName: "Business Management Block", placeID: "ChIJUeMjxxtr3w8RdoxeLH3oXm4", coord: {lat: "6.065186800000001", lon: "-0.2640584"} },
-        { id: 13, names: ["ad"], facilities: [], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M", coord: {lat: "6.0644443", lon: "-0.2649825"} },
-        { id: 14, names: ["fhas", "faculty of health and allied science"], facilities: [], officialName: "Faculty of Health and Allied Science", placeID: "ChIJs7TEQwBr3w8RgcqYXb0sLcA", coord: {lat: "6.0651838", lon: "-0.2628565"} },
-        { id: 15, names: ["fbms", "faculty of business and management studies"], facilities: [], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w", coord: {lat: "6.065087", lon: "-0.2639526"} },
-        { id: 16, names: ["kitchen"], facilities: [], officialName: "Hospitality Kitchen", placeID: "ChIJlyYZ-IBq3w8RY0WCoEmTkbs", coord: {lat: "6.065131899999999", lon: "-0.2637737"} },
-        { id: 17, names: ["societe generale"], facilities: [], officialName: "Societe Generale Ghana", placeID: "ChIJ93o3o1xr3w8RsSTxJL6cHkw", coord: {lat: "6.0646713", lon: "-0.2649737"} },
+        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["classroom", "office", "washroom", "workshop", "lab"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"}, images: 4, classroom: [], office: [], washroom: [], workshop: [], lab: [] },
+        { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["library","classroom", "office", "washroom"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"}, images: 3, library: [], classroom: [], office: [], washroom: [] },
+        { id: 3, names: ["ccb", "central classroom block"], facilities: ["washroom", "classroom", "office", "lab", "library"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"}, images: 4, washroom: [], classroom: [], office: [], lab: [], library: [] },
+        { id: 4, names: ["as", "applied science"], facilities: ["office", "theater", "lab", "washroom", "classroom", "typingpool"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"}, images: 5, office: [], theater: [], lab: [], washroom: [], classroom: [], typingpool: [] },
+        { id: 5, names: ["getfund"], facilities: ["washroom", "tvroom", "hostelroom", "studyroom", "gamepool", "shop"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s", coord: {lat: "6.0619622", lon: "-0.2653302"}, images: 4, washroom: [], tvroom: [], hostelroom: [], studyroom: [], gamepool: [], shop: [] },
+        { id: 6, names: ["tennis"], facilities: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo", coord: {lat: "6.0610236", lon: "-0.2641309"}, images: 3 },
+        { id: 7, names: ["basket ball", "bball"], facilities: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI", coord: {lat: "6.065430500000001", lon: "-0.2645425"}, images: 2 },
+        { id: 8, names: ["adb", "agriculture development bank"], facilities: [], officialName: "Agriculture Development Bank", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8", coord: {lat: "6.0648173", lon: "-0.2654369999999999"}, images: 3 },
+        { id: 9, names: ["ad"], facilities: ["clinic", "washroom", "classroom", "library", "radio", "lab", "office"], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M", coord: {lat: "6.0644443", lon: "-0.2649825"}, images: 3, clinic: [], washroom: [], classroom: [], library: [], radio: [], lab: [], office: [] },
+        { id: 10, names: ["fbms", "faculty of business and management studies"], facilities: ["classroom", "washroom", "conference", "office", "theater", "lab", "workshop", "shop"], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w", coord: {lat: "6.065087", lon: "-0.2639526"}, images: 4, classroom: [], washroom: [], conference: [], office: [], theater: [], lab: [], workshop: [], shop: [] },
+        { id: 11, names: ["gcb", "ghana commercial bank atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0", coord: {lat: "6.0650265", lon: "-0.2647094"}, images: 2 },
+        { id: 12, names: ["sg", "societe generale atm"], facilities: [], officialName: "Societe Generale Ghana ATM", placeID: "ChIJ93o3o1xr3w8RsSTxJL6cHkw", coord: {lat: "6.0646713", lon: "-0.2649737"}, images: 2 }
     ]
+    
 
     const [showAvatar, setShowAvatar] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -84,6 +81,8 @@ const MainScreen = ( {navigation} ) => {
         ["12%"]
     )
     const [render, setRender] = useState({which: "original", render: null}) 
+    const [background, setBackground] = useState({which: "mapview", render: null}) 
+
     const [textInputValue, setTextInputValue] = useState(null)
     const [data, setData] = useState(
         [
@@ -114,11 +113,14 @@ const MainScreen = ( {navigation} ) => {
     
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
-    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null} } )
+    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null}, immages: 0 } )
     const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState(null)
     const [backgroundID, setBackgroundID] = useState(0)
+    const [carouselImages, setCarouselImages] = useState(
+        []
+    )
 
     // const [isRecentMain, setIsRecentMain] = useState(false)
 
@@ -144,7 +146,7 @@ const MainScreen = ( {navigation} ) => {
     const maxLongitude = -0.26; // Set the maximum longitude for the restricted area
     const minLongitude = -0.27; // Set the minimum longitude for the restricted area
 
-    const [hide, setHide] = useState(true)
+    // const [hide, setHide] = useState(true)
 
     const debouncedSearch = useMemo(
         () => debounce((text) => performSearch(text), debouncedDelay.current),
@@ -153,8 +155,6 @@ const MainScreen = ( {navigation} ) => {
 
     const handleProfilePress = () => {
         
-        // setHide((state) => true)
-
         setTextInputValue("")
         if (render.which === "search") {
 
@@ -180,8 +180,6 @@ const MainScreen = ( {navigation} ) => {
 
     const handleProfileClose = () => {
 
-        // setHide((state) => false)
-        
         setProfileVisible(false)
         profileRef.current?.close()
         mainRef.current?.expand()
@@ -255,12 +253,6 @@ const MainScreen = ( {navigation} ) => {
             IDsKey.forEach((IDkey) => {
 
                 const infrastructure = campus.find((item) => item.id == IDkey.id)
-                // infrastructure.facilities.forEach((value, index) => {
-                //     setRecentData((prevData) => (
-                //         [...prevData, {key: index, content: value}]
-                //     ))
-                // })
-
                 searches.add(JSON.stringify({key: IDkey.id, content: `${infrastructure.officialName}${IDkey.key ? `, ${IDkey.key}` : ""}`, icon: ""}))
             })
 
@@ -299,6 +291,12 @@ const MainScreen = ( {navigation} ) => {
         handleTextInputPress()
         debouncedSearch(title)
 
+    }
+
+    const handleToggleClick = ( toggled ) => {
+        toggled !== backgroundID && (
+            toggled === 0 ? setBackground({which: "mapview", render: <MapviewComponent prop= {currentID}/>}) : setBackground({which: "carousel", render: <CarouselComponent prop= {currentID}/>})
+        )
     }
 
     const libraryRenderItem = ( item ) => (
@@ -371,42 +369,44 @@ const MainScreen = ( {navigation} ) => {
 
         const fetchInfo = () => {
 
-            // mainRef.current?.snapToIndex(2)
-            // setShowModal(true);
+            mainRef.current?.snapToIndex(2)
+            setShowModal(true);
             setCurrentID(copy.key);
 
-            // (async () => {
- 
-                // const response = await fetch(urlEndpoint)
-                // if (response.status === 200) {
+            // setBackground({which: "mapview", render: <MapviewComponent/>})
 
-                //     response.json()
-                //         .then((value) => {
+            (async () => {
+ 
+                const response = await fetch(urlEndpoint)
+                if (response.status === 200) {
+
+                    response.json()
+                        .then((value) => {
                             
-                //             const placeGeometry = value.result.geometry
+                            const placeGeometry = value.result.geometry
 
-                //             setDestinationPosition({ title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } });
-                //             Location.getCurrentPositionAsync()
-                //                 .then((location) => {
+                            setDestinationPosition((prev) => ({...prev, title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } }));
+                            Location.getCurrentPositionAsync()
+                                .then((location) => {
                                     
-                //                     setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
-                //                     setShowModal(false)
-                //                     mainRef.current?.snapToIndex(1)
-                //                 })
-                //                 .catch((reason) => {
-                //                     console.log("error with current position", reason)
-                //                 })
-                //         })
-                //         .catch((reason) => {
-                //             console.log("error with place position", reason)
-                        // })
+                                    setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
+                                    setShowModal(false)
+                                    mainRef.current?.snapToIndex(1)
+                                })
+                                .catch((reason) => {
+                                    console.log("error with current position", reason)
+                                })
+                        })
+                        .catch((reason) => {
+                            console.log("error with place position", reason)
+                        })
  
-            //     } else {
-            //         animationRef.current.pause()
-            //         setShowModal(false)
-            //     }
+                } else {
+                    animationRef.current.pause()
+                    setShowModal(false)
+                }
                 
-            // })()
+            })()
         }
 
         return (
@@ -494,12 +494,11 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const MapviewComponent = () => {
+    const MapviewComponent = ( {prop} ) => {
 
         useEffect(() => {
-            return () => {
-                setBackgroundID(0)
-            }
+            setBackgroundID(0)
+
         }, [])
 
         return (
@@ -511,11 +510,10 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const CarouselComponent = () => {
+    const CarouselComponent = ( prop ) => {
 
-        const data = [...new Array(6).keys()];
+        // const data = [...new Array(1).keys()];
         const carouselRef = useRef(null);
-        const insets = useSafeAreaInsets()
 
         const [activeIndex, setActiveIndex] = useState(0)
 
@@ -532,89 +530,45 @@ const MainScreen = ( {navigation} ) => {
         }
 
         const renderItem = ( {item} ) => {
+            // console.log(item)
             return (
                 <View style= {carouselStyles.content}>
-                    <ImageBackground /* source= {require("../../assets/img/favicon.png")} */style= {carouselStyles.imageBackground}>
-                        <Text>Hello World</Text>
-                    </ImageBackground>
+                    <Image source= {{uri: item}} style= {carouselStyles.imageBackground}/>
                 </View>
             )
         }
 
         useEffect(() => {
-            return () => {
-                setBackgroundID(1)
-            }
+            setBackgroundID(1)
         }, [])
 
         return (
             <View style={styles.container}>
                 <View style={carouselStyles.carouselContainer}>
-                    <Carousel loop width= {ITEM_WIDTH} height= {ITEM_HEIGHT} data= {data} renderItem= {renderItem} onSnapToItem= {handleSnap} style= {carouselStyles.carousel} ref= {carouselRef} />
-                </View>
-                <View style={carouselStyles.buttons}>
-                    <Button title= "Next" onPress= {handleNext}/>
-                    <Button title= "End" onPress= {handleEnd}/>
+                    <Carousel loop width= {ITEM_WIDTH} height= {ITEM_HEIGHT} data= {carouselImages} renderItem= {renderItem} onSnapToItem= {handleSnap} style= {carouselStyles.carousel} ref= {carouselRef} />
                 </View>
             </View>
         )
 
     }
 
-    const ProfileMainScreen = ( {navigation} ) => {
+    const ToggleComponent = () => {
 
-        profileScreenNav.current = navigation
         return (
-            <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                {profileData.map(profileRenderItem)}
-            </BottomSheetView>
-        )
-    }
-
-    const ProfileLibraryScreen = ( {navigation} ) => {
-
-        const change = () => {
-            navigation.goBack()
-        }
-        return (
-            <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                <TouchableOpacity onPress= {change}>
-                    <Text>Library</Text>
-                </TouchableOpacity>
-            </BottomSheetView>
-        )
-    }
-    
-    const ProfilePreferenceScreen = ( {navigation} ) => {
-
-        const change = () => {
-            navigation.goBack()
-        }
-        return (
-            <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                <TouchableOpacity onPress= {change}>
-                    <Text>Preference</Text>
-                </TouchableOpacity>
-            </BottomSheetView>
-        )
-    }
-
-    const ProfileLogoutScreen = ( {navigation} ) => {
-
-        const change = () => {
-            navigation.goBack()
-        }
-        return (
-            <BottomSheetView style= {styles.profileSheetContentBoxView}>
-                <TouchableOpacity onPress= {change}>
-                    <Text>Logout</Text>
-                </TouchableOpacity>
-            </BottomSheetView>
+            <View style= {{position: "absolute", marginTop: insets.current.top + 20, width: "100%", alignItems: "flex-end", paddingRight: 30}}>
+                <View style= {{flexDirection: "column", padding: 5, borderRadius: 7, backgroundColor: "grey"}}>
+                    <TouchableOpacity style= {{borderBottomWidth: 2, borderBottomColor: "lightgrey", padding: 2, paddingVertical: 7, justifyContent: "center", alignItems: "center"}} onPress= {() => handleToggleClick(0)}>
+                        <Entypo name= "map" size= {20} color= {"lightgrey"}/>
+                    </TouchableOpacity>
+                    <TouchableOpacity style= {{padding: 2, paddingVertical: 7, justifyContent: "center", alignItems: "center"}} onPress= {() => handleToggleClick(1)}>
+                        <Entypo name= "documents" size= {25} color= {"lightgrey"}/>
+                    </TouchableOpacity>
+                </View>
+            </View>
         )
     }
 
     const DynamicRecentStack = ({ recentD }) => {
-
 
         const height = (HEIGHT * 0.056) * recentD.length
         const components = []
@@ -632,17 +586,15 @@ const MainScreen = ( {navigation} ) => {
                             {
                                 facilities.map((facility, id) => (
                                     <BottomSheetView style= {{...styles.recentItemContainer, backgroundColor: "#E7E7E6"}} key= {id}>
-                                        <TouchableOpacity>
-                                                <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
-                                                    <TouchableOpacity>
-                                                        <Text style= {{paddingLeft: 10, paddingRight: 100, paddingTop: 5}}>{facility.charAt(0).toUpperCase() + facility.slice(1)}</Text>
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity>
-                                                        <Text style= {{paddingLeft: 10, paddingTop: 5}} onPress= {() => recentNavigateRef.current?.goBack()}>Go Back</Text>
-                                                    </TouchableOpacity>
-                                                </BottomSheetView>
-                                        </TouchableOpacity>
-                                </BottomSheetView>
+                                            <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
+                                                <TouchableOpacity>
+                                                    <Text style= {{paddingLeft: 10, paddingRight: 100, paddingTop: 5}}>{facility.charAt(0).toUpperCase() + facility.slice(1)}</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity>
+                                                    <Text style= {{paddingLeft: 10, paddingTop: 5}} onPress= {() => recentNavigateRef.current?.goBack()}>Go Back</Text>
+                                                </TouchableOpacity>
+                                            </BottomSheetView>
+                                    </BottomSheetView>
                                 ))
                             }
                         </>
@@ -650,37 +602,20 @@ const MainScreen = ( {navigation} ) => {
                 }
             )
         })
-        // console.log(showContent)
+
         return (
             <View style= {{...styles.recentBoxViewContainer, height: height}}>
                 {
-                    hide && (
-                            <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
-                                <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
-                                {
-                                    recentD.map((obj, index) => (
-                                        <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
-                                    ))
-                                }
-                            </BlockContainerStack.Navigator>
-                    )
+                    <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
+                        <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
+                        {
+                            recentD.map((obj, index) => (
+                                <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
+                            ))
+                        }
+                    </BlockContainerStack.Navigator>
                 }
             </View>
-        )
-    }
-
-    const DynamicProfileStack = () => {
-
-        return (
-            <BottomSheetView style= {styles.profileSheetContentContainer}>
-                {/* <ProfileContainerStack.Navigator screenOptions= {{headerShown: false}}>
-                    <ProfileContainerStack.Screen name="main" component= {ProfileMainScreen} />
-                    <ProfileContainerStack.Screen name="library" component= {ProfileLibraryScreen} />
-                    <ProfileContainerStack.Screen name="preference" component= {ProfilePreferenceScreen} />
-                    <ProfileContainerStack.Screen name="logout" component= {ProfileLogoutScreen} />
-                </ProfileContainerStack.Navigator> */}
-                <Text>Hello World</Text>
-            </BottomSheetView>
         )
     }
 
@@ -714,6 +649,7 @@ const MainScreen = ( {navigation} ) => {
 
         })()
         setRender({which: "original", render: originalContent})
+        setBackground({which: "mapview", render: <MapviewComponent prop= {currentID}/>})
     }, [])
 
     useEffect(() => {
@@ -741,7 +677,7 @@ const MainScreen = ( {navigation} ) => {
             setRender({which: "original", render: originalContent})
         }
 
-    }, [recentData, hide])
+    }, [recentData])
 
     useEffect(() => {
 
@@ -787,7 +723,7 @@ const MainScreen = ( {navigation} ) => {
             )
         } else {
             setSnapPoints(
-                ["65%", "90%"]
+                ["60%", "90%"]
             )
         }
     }, [backgroundID])
@@ -795,6 +731,7 @@ const MainScreen = ( {navigation} ) => {
     useEffect(() => {
         
         setRecentData([])
+        setCarouselImages([])
 
         const infrastructure = campus.find((obj) => obj.id === currentID)
         infrastructure && infrastructure.facilities.forEach((value, index) => {
@@ -802,6 +739,32 @@ const MainScreen = ( {navigation} ) => {
                 [...prevData, {key: index, content: value.charAt(0).toUpperCase() + value.slice(1)}]
             ))
         })
+
+        if (currentID !== -1) {
+
+            const facilities = ["foe", "fbne", "ccb", "as", "getfund", "tennis", "bball", "adb", "ad", "fbms", "gcb", "sg"]
+            const facilityName = { name: null }
+
+            const unique = infrastructure.names.filter((name) => facilities.includes(name))
+
+            const transformations = [
+                { width: ITEM_WIDTH, height: ITEM_HEIGHT }
+            ]
+        
+
+            Array.from(
+                { length: infrastructure.images },
+                (iter, index) => {
+
+                    const path = `/${unique}-${index + 1}.jpg`
+                    setCarouselImages((prev) => (
+                        [...prev, getImagekitUrlFromPath(path, transformations)]
+                    ))
+
+                }
+            )
+            // console.log(infrastructure.images)
+        }
     }, [currentID])
 
     const originalContent = (
@@ -865,7 +828,8 @@ const MainScreen = ( {navigation} ) => {
     return (
         <View style= {styles.container}> 
                 <View style= {styles.mapContainer}>
-                    <MapviewComponent/>
+                    {background.render}
+                    <ToggleComponent/>
                     <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
                         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
@@ -915,26 +879,6 @@ const MainScreen = ( {navigation} ) => {
                         )
                     }
                 </View>
-        </View>
-    )
-}
-
-const TestScreen = () => {
-
-    const TestStack = createStackNavigator()
-    const Test = () => {
-        return (
-            <View>
-                <Text>Hello World</Text>
-            </View>
-        )
-    }
-
-    return (
-        <View>
-            <TestStack.Navigator screenOptions= {{headerShown: false}}>
-                <TestStack.Screen name="main" component= {Test} />
-            </TestStack.Navigator>
         </View>
     )
 }
@@ -1375,11 +1319,10 @@ const carouselStyles = StyleSheet.create({
         justifyContent: 'space-between',
     },
     content: {
-        aspectRatio: 1,
         justifyContent: "center",
         alignItems: "center",
         marginRight: 20,
-        borderWidth: 1,
+        borderWidth: 1, // the actual border
         borderRadius: 5,
     },
     carouselContainer: {
@@ -1396,9 +1339,11 @@ const carouselStyles = StyleSheet.create({
     },
     imageBackground: {
         width: ITEM_WIDTH * 0.9,
-        height: ITEM_HEIGHT * 0.9,
+        height: ITEM_HEIGHT * 0.9,  // changes the height of the image
         justifyContent: "center",
         alignItems: "center",
+        // overflow: "hidden"
+
     }
 
 })
@@ -1478,3 +1423,4 @@ const authenticateStyles = StyleSheet.create(
 
     }
 )
+
