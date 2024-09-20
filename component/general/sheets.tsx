@@ -31,6 +31,9 @@ const names = {}
 const facilities = {}
 const animation = require("../../assets/loader.json")
 
+const NE = { lat: 6.066167, lon: -0.269583 }
+const SW = { lat: 6.059883, lon: -0.258769 }
+
 const illustrationAssert = Asset.fromModule(require("../../assets/signin.png"))
 const googleAssert = Asset.fromModule(require("../../assets/google.png"))
 const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
@@ -63,11 +66,10 @@ const MainScreen = ( {navigation} ) => {
 
     const ProfileContainerStack = createStackNavigator()
     const BlockContainerStack = createStackNavigator()
-    const RealDealContainerStack = createStackNavigator()
      
     const insets = useRef(useSafeAreaInsets())
-    const googleMapsURL = "https://maps.googleapis.com/maps/api/"
-    const googleMapsAPIkey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
+    const googleMapsAPIKey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
+
     const campus = [
         { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["classroom", "office", "washroom", "workshop", "lab"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"}, images: 4, classroom: [], office: [], washroom: [], workshop: [], lab: [] },
         { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["library","classroom", "office", "washroom"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"}, images: 3, library: [], classroom: [], office: [], washroom: [] },
@@ -128,10 +130,10 @@ const MainScreen = ( {navigation} ) => {
     
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
-    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}} )
-    const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
-    const [currentID, setCurrentID] = useState(-1)
-    const [closetPlaceID, setClosetPlaceID] = useState({ name: null, lat: null, lon: null })
+    const [polylineCoordinates, setPolylineCoordinates] = useState([])
+    const [destinationPosition, setDestinationPosition] = useState( { id: null, name: null, lat: null, lon: null, placeID: null} )
+    const [currentPosition, setCurrentPosition] = useState( {name: null, lat: null, lon: null} )
+    const [closetPlaceID, setClosetPlaceID] = useState({ name: null, lat: null, lon: null, placeID: null })
     const [backgroundID, setBackgroundID] = useState(0)
     const [carouselImages, setCarouselImages] = useState(
         []
@@ -168,47 +170,6 @@ const MainScreen = ( {navigation} ) => {
         () => debounce((text) => performSearch(text), debouncedDelay.current),
     [])
     const profileScreenNav = useRef(null)
-
-    const handleProfilePress = () => {
-        
-        setTextInputValue("")
-        if (render === "search") {
-
-            Keyboard.dismiss()
-            setRender("original")
-            setShowAvatar(true)
-        } else {
-
-            if (profileVisible) {
-
-                setProfileVisible(false)
-                profileRef.current?.close()
-
-            } else  {
-
-                setProfileVisible(true)
-                profileRef.current?.expand()
-                mainRef.current?.snapToIndex(1)
-            }
-        }
-
-    }
-
-    const handleProfileClose = () => {
-
-        setProfileVisible(false)
-        profileRef.current?.close()
-        mainRef.current?.expand()
-    }
-
-    const handleMainChange = ( index: number ) => {
-        
-        if (index == 0) {
-            setProfileVisible(false)
-            profileRef.current?.close()
-
-        }
-    }
 
     const performSearch = ( text: string ) => {
 
@@ -277,6 +238,111 @@ const MainScreen = ( {navigation} ) => {
                     [...prevData, JSON.parse(data)]
                 ))
             })
+
+        }
+    }
+
+    const decodePolyline = ( text: string ) => {
+
+        const coordinates = [];
+        let index = 0, len = text.length;
+        let lat = 0, lng = 0;
+    
+        while (index < len) {
+            let b, shift = 0, result = 0;
+            do {
+                b = text.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlat = ((result >> 1) ^ -(result & 1));
+            lat += dlat;
+    
+            shift = 0;
+            result = 0;
+            do {
+                b = text.charCodeAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            const dlng = ((result >> 1) ^ -(result & 1));
+            lng += dlng;
+    
+            coordinates.push({ latitude: (lat / 1E5), longitude: (lng / 1E5) });
+        }
+        return coordinates;
+    }
+
+    const fetchDirections = async () => {
+        
+        if (currentPosition.name && destinationPosition.name) {
+            console.log(currentPosition)
+
+            const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${currentPosition.lat},${currentPosition.lon}&destination=${destinationPosition.lat},${destinationPosition.lon}&key=${googleMapsAPIKey}`;
+            try {
+    
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.routes.length > 0) {
+    
+                    const points = decodePolyline(data.routes[0].overview_polyline.points);
+                    setPolylineCoordinates(points);
+    
+                    console.log(points)
+                }
+            } catch (error) {
+                console.error("Error fetching directions:", error);
+            }
+        }
+    }
+
+    const isCoordinateInBounds = ( point: { lat: number, lon: number } ) => {
+
+        const { lat, lon } = point
+
+        const isLatInBounds = lat >= SW.lat && lat <= NE.lat  
+        const isLonInBounds = lon >= SW.lon && lon <= NE.lon
+      
+        return isLatInBounds && isLonInBounds
+    }
+    const handleProfilePress = () => {
+        
+        setTextInputValue("")
+        if (render === "search") {
+
+            Keyboard.dismiss()
+            setRender("original")
+            setShowAvatar(true)
+        } else {
+
+            if (profileVisible) {
+
+                setProfileVisible(false)
+                profileRef.current?.close()
+
+            } else  {
+
+                setProfileVisible(true)
+                profileRef.current?.expand()
+                mainRef.current?.snapToIndex(1)
+            }
+        }
+
+    }
+
+    const handleProfileClose = () => {
+
+        setProfileVisible(false)
+        profileRef.current?.close()
+        mainRef.current?.expand()
+    }
+
+    const handleMainChange = ( index: number ) => {
+        
+        if (index == 0) {
+            setProfileVisible(false)
+            profileRef.current?.close()
 
         }
     }
@@ -354,25 +420,45 @@ const MainScreen = ( {navigation} ) => {
     const handleSearchItemClick = ( item: SearchItem ) => {
 
         const place = campus.find((block) => block.id === item.key)
-
         mainRef.current?.snapToIndex(0)
-        setCurrentID(item.key);
 
-        Location.getCurrentPositionAsync()
-            .then((location) => {
-                
-                setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
+        setShowModal(true)
+
+        try {
+            
+            (async () => {
+
+                const location = await Location.getCurrentPositionAsync()
+                if (isCoordinateInBounds({lat: location.coords.latitude, lon: location.coords.longitude})) {
+
+                    setCurrentPosition({ name: place.officialName, lat: location.coords.latitude, lon: location.coords.longitude })
+                    setDestinationPosition((prev) => ({...prev, id: item.key, name: place.officialName, lat: place.coord.lat, lon: place.coord.lon, placeID: place.placeID } ));
+
+                } else {
+
+                    Alert.alert(
+                        "Warning",
+                        "You must be on campus!",
+                        [
+                            { text: "OK", onPress: null }
+                        ]
+                    )
+                }
+
+                animationRef.current.pause()
                 setShowModal(false)
-                mainRef.current?.snapToIndex(0)
-            })
-            .catch((reason) => {
-                console.log("error with current position", reason)
-            })
-        
-        setDestinationPosition((prev) => ({...prev, title: place.officialName, location: { lat: place.coord.lat, lon: place.coord.lon } }));
+            })()
 
-        // animationRef.current.pause()
+        } catch (error) {
+
+            console.log("error with current position", error)
+        }
+        
+
         // setShowModal(false)
+
+        // NE 6.066167, -0.269583
+        // SW 6.059883, -0.258769
 
     }
 
@@ -486,9 +572,10 @@ const MainScreen = ( {navigation} ) => {
 
         return (
             <MapView style= {{flex: 1}} initialRegion= {initialRegion} region= {mapRegion} onRegionChangeComplete= {handleMapRegionChange} ref= {mapRef}>
-                { destinationPosition.title && <Marker coordinate= {{latitude: destinationPosition.location.lat, longitude: destinationPosition.location.lon}} title= {destinationPosition.title} description= {"Destination"} pinColor= {"#4F85F6"}/> }
-                { closetPlaceID.name && <Marker coordinate= {{latitude: closetPlaceID.lat, longitude: closetPlaceID.lon}} title= {closetPlaceID.name} description= {"Start"} pinColor= {"#78D3F8"}/> }
+                { destinationPosition.name && <Marker coordinate= {{latitude: destinationPosition.lat, longitude: destinationPosition.lon}} title= {destinationPosition.name} description= {"Destination"} pinColor= {"#4F85F6"}/> }
+                { currentPosition.name && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {currentPosition.name} description= {"Start"} pinColor= {"#78D3F8"}/> }
                 <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true}/>
+                <Polyline coordinates={polylineCoordinates} strokeColor="orange" strokeWidth={2} lineDashPattern={[7, 5]} lineCap= {"round"} lineJoin= {"bevel"}/>
             </MapView>
         )
     }
@@ -616,11 +703,11 @@ const MainScreen = ( {navigation} ) => {
 
         if (which === "mapview") {
             return (
-                <MapviewComponent prop= {currentID}/>
+                <MapviewComponent prop= {destinationPosition}/>
             )
         }
         return (
-            <CarouselComponent prop= {currentID}/>
+            <CarouselComponent prop= {destinationPosition}/>
         )
     }
 
@@ -629,12 +716,13 @@ const MainScreen = ( {navigation} ) => {
         const height = (HEIGHT * 0.056) * recentD.length
         const components = []
 
+        // console.log(destinationPosition.id)
         recentD.forEach((obj) => {
 
             components.push(
                 () => {
 
-                    const facilities = campus.find((item) => item.id === currentID)[obj.content.toLowerCase()]
+                    const facilities = campus.find((item) => item.id === destinationPosition.id)[obj.content.toLowerCase()]
                     // const currentFacilityName = useNavigationState(state => state.routes[state.routes.length - 1])
 
                     return (
@@ -738,35 +826,8 @@ const MainScreen = ( {navigation} ) => {
 
     useEffect(() => {
 
-        const distances = []
-        if (currentID !== -1) {
-            campus.forEach((place: Place) => {
-
-                const checkNeighbour = findNearestNeighbour(place)
-                !checkNeighbour.isFar && distances.push(checkNeighbour)
-            })
-        }
-        distances.sort((a, b) => {
-
-            if (a.distance === b.distance) {
-
-                return 0
-            } else if (a.distance < b.distance) {
-
-                return -1
-            } 
-            return 1
-        })
-
-        const check = campus.find((obj) => obj.id === distances[0]?.placeID)
-        distances.length > 0 && check && setClosetPlaceID({ name: check.officialName, lat: check.coord.lat, lon: check.coord.lon })
-
+        console.log(currentPosition)
     }, [currentPosition])
-
-    useEffect(() => {
-
-        console.log(closetPlaceID)
-    }, [closetPlaceID])
 
     useEffect(() => {
 
@@ -793,14 +854,14 @@ const MainScreen = ( {navigation} ) => {
         setRecentData([])
         setCarouselImages([])
 
-        const infrastructure = campus.find((obj) => obj.id === currentID)
+        const infrastructure = campus.find((obj) => obj.id === destinationPosition.id)
         infrastructure && infrastructure.facilities.forEach((value, index) => {
             setRecentData((prevData) => (
                 [...prevData, {key: index, content: value.charAt(0).toUpperCase() + value.slice(1)}]
             ))
         })
 
-        if (currentID !== -1) {
+        if (destinationPosition.id !== null) {
 
             const facilities = ["foe", "fbne", "ccb", "as", "getfund", "tennis", "bball", "adb", "ad", "fbms", "gcb", "sg"]
             const unique = infrastructure.names.filter((name) => facilities.includes(name))
@@ -820,17 +881,25 @@ const MainScreen = ( {navigation} ) => {
                     ))
 
                 }
-            )
-            // console.log(infrastructure.images)
+            );
+
+            (
+                async () => {
+                   await fetchDirections()
+                   console.log("what!")
+                }
+            )()
         }
 
-        // infrastructure && (
-        //     setInitialRegion((prev) => (
-        //         {...prev, latitude: Number.parseFloat(infrastructure.coord.lat), longitude: Number.parseFloat(infrastructure.coord.lon)}
-        //     ))
-        // )
+        console.log("Yay!", destinationPosition.id)
 
-    }, [currentID])
+        infrastructure && (
+            setInitialRegion((prev) => (
+                {...prev, latitude: Number.parseFloat(infrastructure.coord.lat), longitude: Number.parseFloat(infrastructure.coord.lon)}
+            ))
+        )
+
+    }, [destinationPosition])
 
     return (
         <View style= {styles.container}> 
