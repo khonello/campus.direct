@@ -10,7 +10,7 @@ import { useNavigationState } from "@react-navigation/native"
 import { supabase } from '../../config/supabase';
 import { getImagekitUrlFromPath } from "../../config/imagekit";
 import ModalBox from "react-native-modalbox";
-import MapView, { UrlTile, Marker, Circle, Region, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { UrlTile, Marker, Circle, Region, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, createContext, useContext, useReducer, useCallback } from "react";
 import BottomSheet, { BottomSheetView, BottomSheetTextInput, BottomSheetFlatList, BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import Constants from "expo-constants";
@@ -48,6 +48,12 @@ const MainScreen = ( {navigation} ) => {
         officialName: string,
         placeID: string,
         coord: Coord
+    }
+
+    interface SearchItem {
+        key: number,
+        icon: string,
+        content: string
     }
 
     type Background = "mapview" | "carousel";
@@ -100,8 +106,8 @@ const MainScreen = ( {navigation} ) => {
         {
             latitude: 6.063400336337259,
             longitude: -0.26424994084753095,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
         }
     );
     const [recentData, setRecentData] = useState(
@@ -122,7 +128,7 @@ const MainScreen = ( {navigation} ) => {
     
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
-    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}, northEast: {lat: null, lon: null}, southWest: {lat: null, lon: null}, immages: 0 } )
+    const [destinationPosition, setDestinationPosition] = useState( {title: null, location: {lat: null, lon: null}} )
     const [currentPosition, setCurrentPosition] = useState( {lat: null, lon: null} )
     const [currentID, setCurrentID] = useState(-1)
     const [closetPlaceID, setClosetPlaceID] = useState({ name: null, lat: null, lon: null })
@@ -345,6 +351,31 @@ const MainScreen = ( {navigation} ) => {
         recentNavigateRef.current?.navigate(item.content)
     }
 
+    const handleSearchItemClick = ( item: SearchItem ) => {
+
+        const place = campus.find((block) => block.id === item.key)
+
+        mainRef.current?.snapToIndex(0)
+        setCurrentID(item.key);
+
+        Location.getCurrentPositionAsync()
+            .then((location) => {
+                
+                setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
+                setShowModal(false)
+                mainRef.current?.snapToIndex(0)
+            })
+            .catch((reason) => {
+                console.log("error with current position", reason)
+            })
+        
+        setDestinationPosition((prev) => ({...prev, title: place.officialName, location: { lat: place.coord.lat, lon: place.coord.lon } }));
+
+        // animationRef.current.pause()
+        // setShowModal(false)
+
+    }
+
     const recentRenderItem = ( item ) => {
 
         return (
@@ -361,66 +392,9 @@ const MainScreen = ( {navigation} ) => {
 
     const searchRenderItem = ( item ) => {
 
-        interface Item {
-            key: number,
-            icon: string,
-            content: string
-        }
-        const copy: Item = item
-        const split = copy.content.split(",")
-
-        const placeID = campus.find((block) => block.id === copy.key).placeID
-
-        const [block, facility = null, name = null] = split
-        const format = "json"
-        const urlPath = "place/details/"
-        const queryParams = new URLSearchParams(`key=${googleMapsAPIkey}&place_id=${placeID}`)
-        const urlEndpoint = `${googleMapsURL}${urlPath}${format}?${queryParams.toString()}`
-
-        const fetchInfo = () => {
-
-            mainRef.current?.snapToIndex(0)
-            setShowModal(true);
-            setCurrentID(copy.key);
-
-            (async () => {
- 
-                const response = await fetch(urlEndpoint)
-                if (response.status === 200) {
-
-                    response.json()
-                        .then((value) => {
-                            
-                            const placeGeometry = value.result.geometry
-
-                            setDestinationPosition((prev) => ({...prev, title: block, location: { lat: placeGeometry.location.lat, lon: placeGeometry.location.lng }, northEast: { lat: placeGeometry.viewport.northeast.lat, lon: placeGeometry.viewport.northeast.lng }, southWest: { lat: placeGeometry.viewport.southwest.lat, lon: placeGeometry.viewport.southwest.lng } }));
-                            Location.getCurrentPositionAsync()
-                                .then((location) => {
-                                    
-                                    setCurrentPosition({ lat: location.coords.latitude, lon: location.coords.longitude })
-                                    setShowModal(false)
-                                    mainRef.current?.snapToIndex(0)
-                                })
-                                .catch((reason) => {
-                                    console.log("error with current position", reason)
-                                })
-                        })
-                        .catch((reason) => {
-                            console.log("error with place position", reason)
-                        })
- 
-                } else {
-                    animationRef.current.pause()
-                    setShowModal(false)
-                }
-                
-            })()
-
-        }
-
         return (
             <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
-                <TouchableOpacity onPress= {() => fetchInfo()}>
+                <TouchableOpacity onPress= {() => handleSearchItemClick( item )}>
                     <BottomSheetView style= {{flexDirection: "row"}}>
                         {item.icon}
                         <Text style= {{paddingLeft: 10, paddingTop: 5}}>{item.content}</Text>
