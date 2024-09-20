@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView, TextInput } from "react-native";
 import { Entypo, AntDesign } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -91,8 +92,10 @@ const MainScreen = ( {navigation} ) => {
     const [snapPoints, setSnapPoints] = useState(
         ["12%"]
     )
-    const [render, setRender] = useState<Render>("original")
     const [background, setBackground] = useState<Background>("mapview")
+    // const [render, setRender] = useState<Render>("original")
+    const [render, setRender] = useState({which: "original", render: null})
+
 
     const [textInputValue, setTextInputValue] = useState(null)
     const [initialRegion, setInitialRegion] = useState(
@@ -124,9 +127,7 @@ const MainScreen = ( {navigation} ) => {
     const [searchData, setSearchData] = useState(
         []
     )
-    const [testData, setTestData] = useState(
-        []
-    )
+
     
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
@@ -139,6 +140,9 @@ const MainScreen = ( {navigation} ) => {
         []
     )
 
+    const [recentStackData, setRecentStackData] = useState(null)
+    
+    
     // const [isRecentMain, setIsRecentMain] = useState(false)
 
     const mainRef = useRef<BottomSheet>(null)
@@ -306,13 +310,14 @@ const MainScreen = ( {navigation} ) => {
       
         return isLatInBounds && isLonInBounds
     }
+    
     const handleProfilePress = () => {
         
         setTextInputValue("")
-        if (render === "search") {
+        if (render.which === "search") {
 
             Keyboard.dismiss()
-            setRender("original")
+            setRender({which: "original", render: originalContent})
             setShowAvatar(true)
         } else {
 
@@ -351,7 +356,7 @@ const MainScreen = ( {navigation} ) => {
 
         setSearchData([])
         setShowAvatar(false)
-        setRender("search")
+        setRender({which: "search", render: searchContent})
     }
 
     const handleTextInputFinish = () => {
@@ -638,67 +643,6 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const RenderComponent = ({ which } : { which: "original" | "search" }) => {
-
-        console.log(which)
-        if (which === "original") {
-
-            return (
-                <BottomSheetScrollView style= {styles.scrollContainer}>
-                    <BottomSheetView style= {styles.libraryContainer}>
-                        <BottomSheetView style= {styles.libraryTitleContainer}>
-                            <Text style= {styles.libraryTitleText}>Library</Text>
-                        </BottomSheetView>
-                        <LibraryComponent content= {data}/>
-                    </BottomSheetView>
-
-                    <BottomSheetView style= {{...styles.facilityContainer, minHeight: HEIGHT * 0.09}}>
-                        <BottomSheetView style= {styles.libraryTitleContainer}>
-                            <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
-                                <Text style= {styles.libraryTitleText}>Block Facility</Text>
-                            </BottomSheetView>
-                        </BottomSheetView>
-
-                        <DynamicRecentStack recentD= {recentData}/>
-
-                    </BottomSheetView>
-
-                    <TouchableOpacity>
-                        <BottomSheetView style= {styles.othersContainer}>
-                            <BottomSheetView style= {styles.othersBoxIconContainer}>
-                                <Entypo name= "direction" size= {30} color= {"#5AC4F7"}/>
-                            </BottomSheetView>
-                            <BottomSheetView style= {styles.othersBoxTextContainer}>
-                                <Text>Share Location</Text>
-                            </BottomSheetView>
-                        </BottomSheetView>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity>
-                        <BottomSheetView style= {styles.othersContainer}>
-                            <BottomSheetView style= {styles.othersBoxIconContainer}>
-                                <Entypo name= "bug" size= {30} color= {"red"}/>
-                            </BottomSheetView>
-                            <BottomSheetView style= {styles.othersBoxTextContainer}>
-                                <Text>Report Issue</Text>
-                            </BottomSheetView>
-                        </BottomSheetView>
-                    </TouchableOpacity>
-                </BottomSheetScrollView>
-            )
-        }
-        return (
-            <BottomSheetScrollView style= {styles.scrollContainer}>
-                <BottomSheetView style= {{...styles.facilityContainer, marginTop: 0}}>
-                    <BottomSheetView style= {styles.libraryTitleContainer}>
-                        <Text style= {styles.libraryTitleText}>Search Result</Text>
-                    </BottomSheetView>
-                    <SearchComponent content= {searchData}/>
-                </BottomSheetView>
-            </BottomSheetScrollView>
-        )
-    }
-
     const BackgroundComponent = ({ which } : { which: "mapview" | "carousel" }) => {
 
         if (which === "mapview") {
@@ -714,9 +658,8 @@ const MainScreen = ( {navigation} ) => {
     const DynamicRecentStack = ({ recentD }: { recentD: any[] }) => {
 
         const height = (HEIGHT * 0.056) * recentD.length
-        const components = []
 
-        // console.log(destinationPosition.id)
+        const components = []
         recentD.forEach((obj) => {
 
             components.push(
@@ -746,14 +689,14 @@ const MainScreen = ( {navigation} ) => {
         const computeStack = useCallback(() => (
             <View style= {{...styles.recentBoxViewContainer, height: height}}>
                 {
-                    // <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
-                    //     <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
-                    //     {
-                    //         recentD.map((obj, index) => (
-                    //             <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
-                    //         ))
-                    //     }
-                    // </BlockContainerStack.Navigator>
+                    <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
+                        <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
+                        {
+                            recentD.map((obj, index) => (
+                                <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
+                            ))
+                        }
+                    </BlockContainerStack.Navigator>
                 }
             </View>
         ), [recentD])
@@ -793,7 +736,7 @@ const MainScreen = ( {navigation} ) => {
             }
 
         })()
-        setRender("original")
+        setRender({which: "original", render: originalContent})
         setBackground("mapview")
     }, [])
 
@@ -813,13 +756,13 @@ const MainScreen = ( {navigation} ) => {
 
     useEffect(() => {
 
-        setRender(render === "search" ? "search" : "original")
+        setRender(render.which === "search" ? {which: "search", render: searchContent} : {which: "original", render: originalContent})
     }, [searchData])
 
     useEffect(() => {
         
         if (textInputValue?.length === 0) {
-            setRender("original")
+            setRender({which: "original", render: originalContent})
         }
 
     }, [recentData])
@@ -886,7 +829,6 @@ const MainScreen = ( {navigation} ) => {
             (
                 async () => {
                    await fetchDirections()
-                   console.log("what!")
                 }
             )()
         }
@@ -901,8 +843,67 @@ const MainScreen = ( {navigation} ) => {
 
     }, [destinationPosition])
 
+    const originalContent = (
+
+        <BottomSheetScrollView style= {styles.scrollContainer}>
+            <BottomSheetView style= {styles.libraryContainer}>
+                <BottomSheetView style= {styles.libraryTitleContainer}>
+                    <Text style= {styles.libraryTitleText}>Library</Text>
+                </BottomSheetView>
+                <LibraryComponent content= {data}/>
+            </BottomSheetView>
+
+            <BottomSheetView style= {{...styles.facilityContainer, minHeight: HEIGHT * 0.09}}>
+                <BottomSheetView style= {styles.libraryTitleContainer}>
+                    <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
+                        <Text style= {styles.libraryTitleText}>Block Facility</Text>
+                    </BottomSheetView>
+                </BottomSheetView>
+
+                <DynamicRecentStack recentD={recentData}/>
+
+            </BottomSheetView>
+
+            <TouchableOpacity>
+                <BottomSheetView style= {styles.othersContainer}>
+                    <BottomSheetView style= {styles.othersBoxIconContainer}>
+                        <Entypo name= "direction" size= {30} color= {"#5AC4F7"}/>
+                    </BottomSheetView>
+                    <BottomSheetView style= {styles.othersBoxTextContainer}>
+                        <Text>Share Location</Text>
+                    </BottomSheetView>
+                </BottomSheetView>
+            </TouchableOpacity>
+
+            <TouchableOpacity>
+                <BottomSheetView style= {styles.othersContainer}>
+                    <BottomSheetView style= {styles.othersBoxIconContainer}>
+                        <Entypo name= "bug" size= {30} color= {"red"}/>
+                    </BottomSheetView>
+                    <BottomSheetView style= {styles.othersBoxTextContainer}>
+                        <Text>Report Issue</Text>
+                    </BottomSheetView>
+                </BottomSheetView>
+            </TouchableOpacity>
+        </BottomSheetScrollView>
+    )
+
+    const searchContent = (
+
+        <BottomSheetScrollView style= {styles.scrollContainer}>
+
+            <BottomSheetView style= {{...styles.facilityContainer, marginTop: 0}}>
+                <BottomSheetView style= {styles.libraryTitleContainer}>
+                    <Text style= {styles.libraryTitleText}>Search Result</Text>
+                </BottomSheetView>
+                <SearchComponent content= {searchData}/>
+            </BottomSheetView>
+
+        </BottomSheetScrollView>
+    )
+
     return (
-        <View style= {styles.container}> 
+            <View style= {styles.container}> 
                 <View style= {styles.mapContainer}>
                     <BackgroundComponent which= {background}/>
                     <ToggleComponent/>
@@ -924,7 +925,7 @@ const MainScreen = ( {navigation} ) => {
 
                         </BottomSheetView>
 
-                        <RenderComponent which= {render}/>
+                        {render.render}
                     </BottomSheet>
 
                     {
