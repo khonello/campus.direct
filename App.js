@@ -4,9 +4,10 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NavigationContainer } from '@react-navigation/native';
 import { Main } from './component/general/sheets';
-// import { Main } from './component/general/tests';
-import { Login } from './component/general/login';
-import { Register } from './component/general/register';
+// import { LeftAlignCarousel } from './component/general/try';
+// import { Login } from './component/general/login';
+// import { Main } from './component/general/register';
+import 'react-native-url-polyfill/auto';
 
 export default function App() {
     return (
