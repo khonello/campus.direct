@@ -1,13 +1,15 @@
-// @ts-nocheck
 import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView, TextInput } from "react-native";
 import { Entypo, AntDesign } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Asset } from "expo-asset";
 import { Session } from '@supabase/supabase-js';
 import { ChevronLeft } from "./svg";
+import { SignInScreen } from "./signin";
+import { SignUpScreen } from "./signup";
+import { LandingScreen } from "./landingpage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createStackNavigator } from '@react-navigation/stack';
-import { useNavigationState } from "@react-navigation/native"
+import { useNavigationState } from "@react-navigation/native";
 import { supabase } from '../../config/supabase';
 import { getImagekitUrlFromPath } from "../../config/imagekit";
 import ModalBox from "react-native-modalbox";
@@ -32,14 +34,10 @@ const names = {}
 const facilities = {}
 const animation = require("../../assets/loader.json")
 
-const NE = { lat: 6.066167, lon: -0.269583 }
-const SW = { lat: 6.059883, lon: -0.258769 }
+const NW = { lat: 6.066167, lon: -0.269583 }
+const SE = { lat: 6.059883, lon: -0.258769 }
 
-const illustrationAssert = Asset.fromModule(require("../../assets/signin.png"))
-const googleAssert = Asset.fromModule(require("../../assets/google.png"))
-const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
-
-const MainScreen = ( {navigation} ) => {
+const MainScreen = ({ navigation }) => {
 
     interface Coord {
         lat: string,
@@ -67,6 +65,9 @@ const MainScreen = ( {navigation} ) => {
 
     const ProfileContainerStack = createStackNavigator()
     const BlockContainerStack = createStackNavigator()
+
+    const route = useNavigationState(state => state.routeNames)
+
      
     const insets = useRef(useSafeAreaInsets())
     const googleMapsAPIKey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
@@ -74,7 +75,7 @@ const MainScreen = ( {navigation} ) => {
     const campus = [
         { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["classroom", "office", "washroom", "workshop", "lab"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"}, images: 4, classroom: [], office: [], washroom: [], workshop: [], lab: [] },
         { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["library","classroom", "office", "washroom"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"}, images: 3, library: [], classroom: [], office: [], washroom: [] },
-        { id: 3, names: ["ccb", "central classroom block"], facilities: ["washroom", "classroom", "office", "lab", "library"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"}, images: 4, washroom: [], classroom: [], office: [], lab: [], library: [] },
+        { id: 3, names: ["ccb", "central classroom block"], facilities: ["washroom", "classroom", "office", "lab", "library"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"}, images: 4, washroom: [], classroom: [], office: [], lab: [], library: [{ name: "E-Library", direction: "The left block when facing CCB, last floor" }] },
         { id: 4, names: ["as", "applied science"], facilities: ["office", "theater", "lab", "washroom", "classroom", "typingpool"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"}, images: 5, office: [], theater: [], lab: [], washroom: [], classroom: [], typingpool: [] },
         { id: 5, names: ["getfund"], facilities: ["washroom", "tvroom", "hostelroom", "studyroom", "gamepool", "shop"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s", coord: {lat: "6.0619622", lon: "-0.2653302"}, images: 4, washroom: [], tvroom: [], hostelroom: [], studyroom: [], gamepool: [], shop: [] },
         { id: 6, names: ["tennis"], facilities: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo", coord: {lat: "6.0610236", lon: "-0.2641309"}, images: 3 },
@@ -89,11 +90,12 @@ const MainScreen = ( {navigation} ) => {
 
     const [showAvatar, setShowAvatar] = useState(true)
     const [showModal, setShowModal] = useState(false)
+    const [showDescription, setShowDescription] = useState(false)
+    const [description, setDescription] = useState({ name: null, direction: null })
     const [snapPoints, setSnapPoints] = useState(
         ["12%"]
     )
     const [background, setBackground] = useState<Background>("mapview")
-    // const [render, setRender] = useState<Render>("original")
     const [render, setRender] = useState({which: "original", render: null})
 
 
@@ -128,9 +130,9 @@ const MainScreen = ( {navigation} ) => {
         []
     )
 
-    
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
+    const [profileInfo, setProfileInfo] = useState({})
     const [polylineCoordinates, setPolylineCoordinates] = useState([])
     const [destinationPosition, setDestinationPosition] = useState( { id: null, name: null, lat: null, lon: null, placeID: null} )
     const [currentPosition, setCurrentPosition] = useState( {name: null, lat: null, lon: null} )
@@ -140,11 +142,6 @@ const MainScreen = ( {navigation} ) => {
         []
     )
 
-    const [recentStackData, setRecentStackData] = useState(null)
-    
-    
-    // const [isRecentMain, setIsRecentMain] = useState(false)
-
     const mainRef = useRef<BottomSheet>(null)
     const profileRef = useRef<BottomSheet>(null)
     const recentNavigateRef = useRef(null)
@@ -153,6 +150,7 @@ const MainScreen = ( {navigation} ) => {
     const inputRef = useRef<typeof BottomSheetTextInput>(null)
     const animationRef = useRef<LottieView>(null)
     const debouncedDelay = useRef(1000)
+    const profileScreenNav = useRef(null)
 
     const thunderForestURL = "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=d0051eac5a6b44fabc51ab2f9a669c6e"
     const openstreetURL = "http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -168,12 +166,9 @@ const MainScreen = ( {navigation} ) => {
     const maxLongitude = -0.26; // Set the maximum longitude for the restricted area
     const minLongitude = -0.27; // Set the minimum longitude for the restricted area
 
-    // const [hide, setHide] = useState(true)
-
     const debouncedSearch = useMemo(
         () => debounce((text) => performSearch(text), debouncedDelay.current),
     [])
-    const profileScreenNav = useRef(null)
 
     const performSearch = ( text: string ) => {
 
@@ -208,8 +203,6 @@ const MainScreen = ( {navigation} ) => {
                             infrastructureID.forEach(id => {
 
                                     const look = campus.find((item) => item.id === id)[key]
-                                    console.log("found these", ...look)
-
                                 IDsKey.add({ id: id, key: key })
                             });
                         } else {
@@ -222,10 +215,10 @@ const MainScreen = ( {navigation} ) => {
                     campus.forEach((block) => {
                         block.facilities.forEach((facility) => {
 
-                            if (block[facility].includes(lowerCase)) {
+                            const check = block[facility].find((obj) => obj.name.toLowerCase() === lowerCase)
+                            if (check?.name) {
                                 
-                                const look = block[facility].find((name) => name === lowerCase)
-                                look && IDsKey.add({ id: block.id, key: `${facility}, ${look}` })
+                                IDsKey.add({ id: block.id, key: `${facility}, ${check.name.toLowerCase()}` })
                             }
                         })
                     })
@@ -280,7 +273,6 @@ const MainScreen = ( {navigation} ) => {
     const fetchDirections = async () => {
         
         if (currentPosition.name && destinationPosition.name) {
-            console.log(currentPosition)
 
             const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${currentPosition.lat},${currentPosition.lon}&destination=${destinationPosition.lat},${destinationPosition.lon}&key=${googleMapsAPIKey}`;
             try {
@@ -293,7 +285,6 @@ const MainScreen = ( {navigation} ) => {
                     const points = decodePolyline(data.routes[0].overview_polyline.points);
                     setPolylineCoordinates(points);
     
-                    console.log(points)
                 }
             } catch (error) {
                 console.error("Error fetching directions:", error);
@@ -305,10 +296,12 @@ const MainScreen = ( {navigation} ) => {
 
         const { lat, lon } = point
 
-        const isLatInBounds = lat >= SW.lat && lat <= NE.lat  
-        const isLonInBounds = lon >= SW.lon && lon <= NE.lon
+        const isLatInBounds = lat <= NW.lat && lat >= SE.lat
+        const isLonInBounds = lon >= NW.lon && lon <= SE.lon
       
-        return isLatInBounds && isLonInBounds
+        return (
+            isLatInBounds && isLonInBounds
+        )
     }
     
     const handleProfilePress = () => {
@@ -436,7 +429,7 @@ const MainScreen = ( {navigation} ) => {
                 const location = await Location.getCurrentPositionAsync()
                 if (isCoordinateInBounds({lat: location.coords.latitude, lon: location.coords.longitude})) {
 
-                    setCurrentPosition({ name: place.officialName, lat: location.coords.latitude, lon: location.coords.longitude })
+                    setCurrentPosition({ name: "Origin", lat: location.coords.latitude, lon: location.coords.longitude })
                     setDestinationPosition((prev) => ({...prev, id: item.key, name: place.officialName, lat: place.coord.lat, lon: place.coord.lon, placeID: place.placeID } ));
 
                 } else {
@@ -458,13 +451,26 @@ const MainScreen = ( {navigation} ) => {
 
             console.log("error with current position", error)
         }
-        
+    }
 
-        // setShowModal(false)
+    const handleItemProfileClicked =( item ) => {
 
-        // NE 6.066167, -0.269583
-        // SW 6.059883, -0.258769
+        setProfileClicked(item.content)
+        if (item.content === "Logout") {
 
+            Alert.alert(
+                "Logout",
+                "Are you sure ?",
+                [
+                    { text: "Yes", onPress: () => {
+                            supabase.auth.signOut()
+                            navigation.navigate("signin")
+                        }
+                    },
+                    { text: "No", style: "cancel" }
+                ]
+            );
+        }
     }
 
     const recentRenderItem = ( item ) => {
@@ -495,7 +501,7 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const findNearestNeighbour = (checkPlace: Place) => {
+    const findNearestNeighbour = ( checkPlace: Place ) => {
 
         const R = 6371000
         const φ1 = currentPosition.lat * Math.PI / 180
@@ -513,10 +519,11 @@ const MainScreen = ( {navigation} ) => {
         return { placeID: checkPlace.placeID, isFar: distance > 10, distance: distance }
     }
 
-    const profileRenderItem = ( item ) => (
-        
+    const profileRenderItem = ( item ) => {
+
+        return (
             <BottomSheetView style= {styles.recentItemContainer} key= {item.key}>
-                <TouchableOpacity onPress= {() => setProfileClicked(item.content)}>              
+                <TouchableOpacity onPress= {() => handleItemProfileClicked(item)}>              
                     <BottomSheetView style= {{flexDirection: "row", alignItems: "center"}}>
                         {item.icon}
                         <BottomSheetView style= {{flex: 1, flexDirection: "row", justifyContent: "space-between"}}>
@@ -526,7 +533,8 @@ const MainScreen = ( {navigation} ) => {
                     </BottomSheetView>
                 </TouchableOpacity>
             </BottomSheetView>
-    )
+        )
+    }
 
     const RecentComponent = ( content  ) => {
 
@@ -540,13 +548,13 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const LibraryComponent = ( { content } ) => (
+    const LibraryComponent = ({ content }) => (
         <BottomSheetScrollView style= {styles.libraryBoxScrollContainer} horizontal>
             {content.map(libraryRenderItem)}
         </BottomSheetScrollView>
     )
 
-    const SearchComponent = ( { content } ) => (
+    const SearchComponent = ({ content }) => (
         <BottomSheetView style= {styles.recentBoxViewContainer}>
             {content.map(searchRenderItem)}
         </BottomSheetView>
@@ -568,7 +576,7 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const MapviewComponent = ( {prop} ) => {
+    const MapviewComponent = ({ prop }) => {
 
         useEffect(() => {
             setBackgroundID(0)
@@ -585,11 +593,10 @@ const MainScreen = ( {navigation} ) => {
         )
     }
 
-    const CarouselComponent = ( {prop} ) => {
+    const CarouselComponent = ({ prop }) => {
 
         // const data = [...new Array(1).keys()];
         const carouselRef = useRef(null);
-
         const [activeIndex, setActiveIndex] = useState(0)
 
         const handleNext = () => {
@@ -639,6 +646,9 @@ const MainScreen = ( {navigation} ) => {
                         <Entypo name= "documents" size= {25} color= {"lightgrey"}/>
                     </TouchableOpacity>
                 </View>
+                <View>
+                    {/* <Text>Hello World</Text> */}
+                </View>
             </View>
         )
     }
@@ -658,25 +668,29 @@ const MainScreen = ( {navigation} ) => {
     const DynamicRecentStack = ({ recentD }: { recentD: any[] }) => {
 
         const height = (HEIGHT * 0.056) * recentD.length
-
         const components = []
+
+        const handleFacilityNameClick = ( facility ) => {
+
+            setDescription({ name: facility.name, direction: facility.direction })
+            setShowDescription(true)
+        }
+
         recentD.forEach((obj) => {
 
             components.push(
                 () => {
 
                     const facilities = campus.find((item) => item.id === destinationPosition.id)[obj.content.toLowerCase()]
-                    // const currentFacilityName = useNavigationState(state => state.routes[state.routes.length - 1])
-
                     return (
                         facilities.map((facility, id) => (
                             <BottomSheetView style= {{...styles.recentItemContainer, backgroundColor: "#E7E7E6"}} key= {id}>
                                     <BottomSheetView style= {{flexDirection: "row", justifyContent: "space-between"}}>
-                                        <TouchableOpacity>
-                                            <Text style= {{paddingLeft: 10, paddingRight: 100, paddingTop: 5}}>{facility.charAt(0).toUpperCase() + facility.slice(1)}</Text>
+                                        <TouchableOpacity onPress= {() => handleFacilityNameClick(facility)}>
+                                            <Text style= {{paddingLeft: 10, paddingRight: 100, paddingTop: 5}}>{facility.name}</Text>
                                         </TouchableOpacity>
-                                        <TouchableOpacity>
-                                            <Text style= {{paddingLeft: 10, paddingTop: 5}} onPress= {() => recentNavigateRef.current?.goBack()}>Go Back</Text>
+                                        <TouchableOpacity onPress= {() => recentNavigateRef.current?.goBack()}>
+                                            <Text style= {{paddingLeft: 10, paddingTop: 5}}>Go Back</Text>
                                         </TouchableOpacity>
                                     </BottomSheetView>
                             </BottomSheetView>
@@ -690,7 +704,7 @@ const MainScreen = ( {navigation} ) => {
             <View style= {{...styles.recentBoxViewContainer, height: height}}>
                 {
                     <BlockContainerStack.Navigator screenOptions= {{headerShown: false, cardStyle: {backgroundColor: "#E7E7E6"}}}>
-                        <BlockContainerStack.Screen name= "master" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
+                        <BlockContainerStack.Screen name= "block" component= {RecentComponent} initialParams= {{ content: recentD }} key= {0}/>
                         {
                             recentD.map((obj, index) => (
                                 <BlockContainerStack.Screen name= {obj.content} component= {components[index]} initialParams= {{  }} key= {index + 1}/>
@@ -701,7 +715,6 @@ const MainScreen = ( {navigation} ) => {
             </View>
         ), [recentD])
 
-        console.log(recentD)
         return (
             computeStack()
         )
@@ -736,6 +749,15 @@ const MainScreen = ( {navigation} ) => {
             }
 
         })()
+
+        supabase.auth.getSession()
+            .then(({ data }) => {
+
+                console.log(data)
+            })
+            .catch((reason) => {
+                
+            })
         setRender({which: "original", render: originalContent})
         setBackground("mapview")
     }, [])
@@ -769,7 +791,7 @@ const MainScreen = ( {navigation} ) => {
 
     useEffect(() => {
 
-        console.log(currentPosition)
+        // console.log(currentPosition)
     }, [currentPosition])
 
     useEffect(() => {
@@ -785,7 +807,6 @@ const MainScreen = ( {navigation} ) => {
                 ["12%", "30%", "90%"]
             )
         } else {
-            console.log(snapPoints)
             setSnapPoints(
                 ["60%", "90%"]
             )
@@ -832,8 +853,6 @@ const MainScreen = ( {navigation} ) => {
                 }
             )()
         }
-
-        console.log("Yay!", destinationPosition.id)
 
         infrastructure && (
             setInitialRegion((prev) => (
@@ -903,13 +922,27 @@ const MainScreen = ( {navigation} ) => {
     )
 
     return (
-            <View style= {styles.container}> 
+        <View style= {styles.container}> 
                 <View style= {styles.mapContainer}>
                     <BackgroundComponent which= {background}/>
                     <ToggleComponent/>
                     <ModalBox isOpen={showModal} onClosed={() => setShowModal(false)} style= {styles.modalBox}>
                         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
+                        </View>
+                    </ModalBox>
+                    <ModalBox isOpen={showDescription} onClosed={() => setShowDescription(false)} style={styles.directionsBox}>
+                        <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+                            <View style= {{width: WIDTH * 0.65, minHeight: HEIGHT * 0.125, borderRadius: 7, backgroundColor: "lightgrey", paddingLeft: 5}}>
+                                <View style= {{flexDirection: "row", marginTop: 10}}>
+                                    <Text style= {{fontSize: 13, fontWeight: "bold", marginRight: 10}}>FacilityName</Text>
+                                    <Text>{description.name}</Text>
+                                </View>
+                                <View>
+                                    <Text style= {{fontSize: 13, fontWeight: "bold"}}>Description</Text>
+                                    <Text>{description.direction}.</Text>
+                                </View>
+                            </View>
                         </View>
                     </ModalBox>
                     <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
@@ -927,7 +960,6 @@ const MainScreen = ( {navigation} ) => {
 
                         {render.render}
                     </BottomSheet>
-
                     {
                         profileVisible && (
                             <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
@@ -960,246 +992,6 @@ const MainScreen = ( {navigation} ) => {
     )
 }
 
-const LoginScreen = ( {navigation} ) => {
-
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [loading, setLoading] = useState(false);
-    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
-    
-
-    const handleSignInWithGmail = async () => {
-         
-        setLoading(true)
-        const response = await supabase.auth.signInWithOAuth({
-
-            provider: "google",
-            options: {
-                redirectTo: redirectUrl
-            }
-        });
-
-        if (response.error) {
-
-            Alert.alert(
-                "Login Failed",
-                response.error.message || "Invalid email or password. Please try again.",
-                [{ text: "OK" }]
-            )
-        } else {
-            // Check user existence and handle signup
-            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
-            if(authSession.type === "success") {
-
-                //
-            }
-
-        }
-        setLoading(false)
-    };
-
-    const handleSignInWithPassword = async () => {
-
-        if (email.length > 0 && password.length > 0) {
-            setLoading(true)
-            const response = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            })
-
-            if (response.error) {
-
-                console.log(response.error.message, loading);
-                Alert.alert(
-                    "Login Failed",
-                    response.error.message || "Invalid email or password. Please try again.",
-                    [{ text: "OK" }]
-                )
-            } else {
-
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                    setSession(session)
-                })
-                console.log(response.data.session)
-            }
-            setLoading(false)
-            setEmail(""); setPassword("")
-        }
-    }
-
-    const [session, setSession] = useState<Session | null>(null)
-
-    useEffect(() => {
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-        })
-    }, [])
-    useEffect(() => {
-        console.log(session && session.user && session.user.id)
-    }, [session])
-
-    return (
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-            <View style= {authenticateStyles.container}>
-                <View style= {authenticateStyles.content}>
-                    <View style= {authenticateStyles.topContainer}>
-                        <Image source= {illustrationAssert} contentFit= {"cover"} style= {authenticateStyles.illustrationImage}/>
-                    </View>
-                    <View style= {authenticateStyles.bottomContainer}>
-                        <View style= {authenticateStyles.inputContainer}>
-                            <TextInput placeholder= {"Email"} style= {authenticateStyles.textInput} value= {email} onChangeText= {setEmail} clearTextOnFocus keyboardType= {"email-address"}/>
-                            <TextInput placeholder= {"Password"} style= {authenticateStyles.textInput} secureTextEntry clearTextOnFocus value= {password} onChangeText= {setPassword}/>
-                        </View>
-                        <TouchableOpacity style= {authenticateStyles.loginButtonContainer} onPress= {handleSignInWithPassword} disabled= {loading}>
-                            {
-                                !loading ? (<Text style= {authenticateStyles.textStyle}>Login</Text>) : (<Image source= {loadingAssert} style= {{width: loadingAssert.width * 0.5, height: loadingAssert.height * 0.25}}/>)
-                            }
-                        </TouchableOpacity>
-                        <View style= {authenticateStyles.loginWithContainer}>
-                            <View style= {authenticateStyles.horizontalLine}/>
-                            <View style= {authenticateStyles.loginWithTextContainer}>
-                                <Text style= {{fontSize: 12, color: "darkgrey"}}>Or Login With</Text>
-                            </View>
-                            <View style= {authenticateStyles.horizontalLine}/>
-                        </View>
-                        <TouchableOpacity style= {authenticateStyles.googleContainer} onPress= {handleSignInWithGmail}>
-                            <Image source= {googleAssert} style= {authenticateStyles.googleImage}/>
-                            <Text style= {{fontWeight: "bold"}}>Google</Text>
-                        </TouchableOpacity>
-                        <View style= {authenticateStyles.signupTextContainer}>
-                            <Text style= {{color: "darkgrey"}}>You don't have an account ?</Text>
-                            <TouchableOpacity>
-                                <Text style= {{color: "grey", fontWeight: "bold"}}>Signup</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </View>
-        </KeyboardAvoidingView>
-    )
-}
-
-const SignUpScreen = ( {navigation} ) => {
-
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [loading, setLoading] = useState(false);
-    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
-
-    const handleSignUpWithGmail = async () => {
-         
-        setLoading(true)
-        const response = await supabase.auth.signInWithOAuth({
-
-            provider: "google",
-            options: {
-                redirectTo: redirectUrl
-            }
-        });
-
-        if (response.error) {
-
-            Alert.alert(
-                "Login Failed",
-                response.error.message || "Invalid email or password. Please try again.",
-                [{ text: "OK" }]
-            )
-        } else {
-            // Check user existence and handle signup
-            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
-            if(authSession.type === "success") {
-
-                //
-            }
-
-        }
-        setLoading(false)
-    };
-
-    const handleSignUpWithPassword = async () => {
-
-        if (email.length > 0 && password.length > 0) {
-            setLoading(true)
-            const response = await supabase.auth.signUp({
-                email: email,
-                password: password
-            })
-
-            if (response.error) {
-
-                console.log(response.error.message, loading);
-                Alert.alert(
-                    "Signup Failed",
-                    response.error.message || "Invalid email or password. Please try again.",
-                    [{ text: "OK" }]
-                )
-            } else {
-
-                Alert.alert(
-                    "Confirm Email",
-                    response.error.message || "Confirmation email sent.",
-                    [{ text: "OK" }]
-                )
-            }
-            setLoading(false)
-            setEmail(""); setPassword("")
-        }
-    }
-
-    const [session, setSession] = useState<Session | null>(null)
-
-    useEffect(() => {
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-        })
-    }, [])
-    useEffect(() => {
-        console.log(session && session.user && session.user.id)
-    }, [session])
-
-    return (
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-            <View style= {authenticateStyles.container}>
-                <View style= {authenticateStyles.content}>
-                    <View style= {authenticateStyles.topContainer}>
-                        <Image source= {illustrationAssert} contentFit= {"cover"} style= {authenticateStyles.illustrationImage}/>
-                    </View>
-                    <View style= {authenticateStyles.bottomContainer}>
-                        <View style= {authenticateStyles.inputContainer}>
-                            <TextInput placeholder= {"Email"} style= {authenticateStyles.textInput} value= {email} onChangeText= {setEmail} clearTextOnFocus keyboardType= {"email-address"}/>
-                            <TextInput placeholder= {"Password"} style= {authenticateStyles.textInput} secureTextEntry clearTextOnFocus value= {password} onChangeText= {setPassword}/>
-                        </View>
-                        <TouchableOpacity style= {authenticateStyles.loginButtonContainer} onPress= {handleSignUpWithPassword} disabled= {loading}>
-                            {
-                                !loading ? (<Text style= {authenticateStyles.textStyle}>Signup</Text>) : (<Image source= {loadingAssert} style= {{width: loadingAssert.width * 0.5, height: loadingAssert.height * 0.25}}/>)
-                            }
-                        </TouchableOpacity>
-                        <View style= {authenticateStyles.loginWithContainer}>
-                            <View style= {authenticateStyles.horizontalLine}/>
-                            <View style= {authenticateStyles.loginWithTextContainer}>
-                                <Text style= {{fontSize: 12, color: "darkgrey"}}>Or Signup With</Text>
-                            </View>
-                            <View style= {authenticateStyles.horizontalLine}/>
-                        </View>
-                        <TouchableOpacity style= {authenticateStyles.googleContainer} onPress= {handleSignUpWithGmail}>
-                            <Image source= {googleAssert} style= {authenticateStyles.googleImage}/>
-                            <Text style= {{fontWeight: "bold"}}>Google</Text>
-                        </TouchableOpacity>
-                        <View style= {authenticateStyles.signupTextContainer}>
-                            <Text style= {{color: "darkgrey"}}>You already have an account ?</Text>
-                            <TouchableOpacity>
-                                <Text style= {{color: "grey", fontWeight: "bold"}}>Signin</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </View>
-        </KeyboardAvoidingView>
-    )
-}
-
 export const Main = () => {
     const MainContainerStack = createStackNavigator();
     const options = {
@@ -1207,9 +999,10 @@ export const Main = () => {
     }
     return (
         <MainContainerStack.Navigator screenOptions= {options}>
-            <MainContainerStack.Screen name="master" component= {MainScreen} />
-            <MainContainerStack.Screen name="login" component= {LoginScreen} />
+            <MainContainerStack.Screen name="landing" component= {LandingScreen}/>
+            <MainContainerStack.Screen name="signin" component= {SignInScreen} />
             <MainContainerStack.Screen name="signup" component= {SignUpScreen} />
+            <MainContainerStack.Screen name="main" component= {MainScreen} />
         </MainContainerStack.Navigator>
     )
 }
@@ -1386,6 +1179,14 @@ const styles  = StyleSheet.create(
             // height: 120,
             backgroundColor: "transparent",
             borderRadius: 13
+        },
+        directionsBox: {
+            justifyContent: "center",
+            alignItems: "center",
+            width: WIDTH * 0.7,
+            height: HEIGHT * 0.15,
+            backgroundColor: "#fff",
+            borderRadius: 13
         }
     }
 )
@@ -1424,79 +1225,3 @@ const carouselStyles = StyleSheet.create({
     }
 
 })
-
-const authenticateStyles = StyleSheet.create(
-    {
-        container: {
-            flex: 1,
-            justifyContent: "center",
-            alignItems: "center"
-        },
-        content: {
-            flexDirection: "column"
-        },
-        topContainer: {
-            marginBottom: 70
-        },
-        bottomContainer: {
-
-        },
-        illustrationImage: {
-            width: illustrationAssert.width * 0.4,
-            height: illustrationAssert.height * 0.4,
-        },
-        textInput: {
-            paddingLeft: 15,
-            paddingVertical: 10,
-            borderWidth: 1,
-            borderRadius: 7,
-            borderColor: "grey",
-            marginBottom: 20
-        },
-        inputContainer: {
-
-        },
-        loginButtonContainer: {
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: "#6A63F6",
-            padding: 10,
-            borderRadius: 7,
-            marginBottom: 10
-        },
-        textStyle: {
-            fontWeight: "bold",
-            color: "white"
-        },
-        loginWithContainer: {
-            flexDirection: "row",
-            paddingTop: 10,
-            paddingBottom: 3,
-            justifyContent: "center",
-            alignItems: "center"
-        },
-        horizontalLine: {
-            flex: 0.4,
-            height: 1,
-            backgroundColor: 'lightgrey',
-        },
-        loginWithTextContainer: {
-            marginHorizontal: 5
-        },
-        googleContainer: {
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center"
-        },
-        googleImage: {
-            width: googleAssert.width * 0.035,
-            height: googleAssert.height * 0.035
-        },
-        signupTextContainer: {
-            flexDirection: "row",
-            justifyContent: "center",
-            paddingTop: 10
-        }
-
-    }
-)

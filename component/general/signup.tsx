@@ -1,5 +1,6 @@
 import { View, Text, TextInput, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView } from "react-native";
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Image } from "expo-image";
 import { Asset } from "expo-asset";
 import { Session } from '@supabase/supabase-js';
@@ -13,13 +14,17 @@ const HEIGHT = Dimensions.get("window").height
 const illustrationAssert = Asset.fromModule(require("../../assets/signup.png"))
 const googleAssert = Asset.fromModule(require("../../assets/google.png"))
 const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
-export const Register = () => {
+
+export const SignUpScreen = ( {navigation} ) => {
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false);
-    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
+    const [sessssion, setSessssion] = useState<Session | null>(null)
 
+    WebBrowser.maybeCompleteAuthSession()
+
+    const redirectUrl = AuthSession.makeRedirectUri({ preferLocalhost: true })
     const handleSignUpWithGmail = async () => {
          
         setLoading(true)
@@ -27,34 +32,43 @@ export const Register = () => {
 
             provider: "google",
             options: {
-                redirectTo: redirectUrl
+                redirectTo: redirectUrl,
+                queryParams: {
+                    prompt: "select_account",
+                    access_type: "offline"
+                }
             }
-        });
+        })
 
         if (response.error) {
 
             Alert.alert(
-                "Login Failed",
-                response.error.message || "Invalid email or password. Please try again.",
+                "Signup Failed",
+                response.error.message,
                 [{ text: "OK" }]
             )
         } else {
-            // Check user existence and handle signup
-            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
-            if(authSession.type === "success") {
+            
+            WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
+                .then((authSession) => {
+                    if (authSession.type === "success") {
 
-                //
-            }
+                        navigation.navigate("main")
+                    }
+                })
+                .catch((reason) => {
+                    console.log(reason)
+                })
 
         }
         setLoading(false)
-    };
+    }
 
     const handleSignUpWithPassword = async () => {
 
         if (email.length > 0 && password.length > 0) {
             setLoading(true)
-            const response = await supabase.auth.signUp({
+            const response = await supabase.auth.signInWithPassword({
                 email: email,
                 password: password
             })
@@ -63,37 +77,29 @@ export const Register = () => {
 
                 console.log(response.error.message, loading);
                 Alert.alert(
-                    "Signup Failed",
+                    "Login Failed",
                     response.error.message || "Invalid email or password. Please try again.",
                     [{ text: "OK" }]
                 )
             } else {
 
-                Alert.alert(
-                    "Confirm Email",
-                    response.error.message || "Confirmation email sent.",
-                    [{ text: "OK" }]
-                )
+                supabase.auth.getSession().then(({ data: { session } }) => {
+                    setSessssion(session)
+                })
+                console.log(response.data.session)
             }
             setLoading(false)
             setEmail(""); setPassword("")
         }
     }
 
-    const [session, setSession] = useState<Session | null>(null)
+    const handleSignInClick = () => {
 
-    useEffect(() => {
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-        })
-    }, [])
-    useEffect(() => {
-        console.log(session && session.user && session.user.id)
-    }, [session])
+        navigation.navigate("signin")
+    }
 
     return (
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <KeyboardAwareScrollView style={{ flex: 1 }}>
             <View style= {styles.container}>
                 <View style= {styles.content}>
                     <View style= {styles.topContainer}>
@@ -122,14 +128,14 @@ export const Register = () => {
                         </TouchableOpacity>
                         <View style= {styles.signupTextContainer}>
                             <Text style= {{color: "darkgrey"}}>You already have an account ?</Text>
-                            <TouchableOpacity>
-                                <Text style= {{color: "grey", fontWeight: "bold"}}>Signin</Text>
+                            <TouchableOpacity onPress= {handleSignInClick}>
+                                <Text style= {{color: "grey", fontWeight: "bold"}}>Login</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </View>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
     )
 }
 
@@ -144,6 +150,7 @@ const styles = StyleSheet.create(
             flexDirection: "column"
         },
         topContainer: {
+            marginTop: 150,
             marginBottom: 70
         },
         bottomContainer: {

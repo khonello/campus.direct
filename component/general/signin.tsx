@@ -1,11 +1,13 @@
 import { View, Text, TextInput, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView } from "react-native";
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Image } from "expo-image";
 import { Asset } from "expo-asset";
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session"
+import * as AuthSession from "expo-auth-session";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
@@ -13,13 +15,17 @@ const HEIGHT = Dimensions.get("window").height
 const illustrationAssert = Asset.fromModule(require("../../assets/signin.png"))
 const googleAssert = Asset.fromModule(require("../../assets/google.png"))
 const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
-export const Login = () => {
+
+export const SignInScreen = ({ navigation }) => {
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [loading, setLoading] = useState(false);
-    const redirectUrl = AuthSession.makeRedirectUri({ scheme: "campusnav" });
+    const [session, setSession] = useState<Session | null>(null)
 
+    WebBrowser.maybeCompleteAuthSession()
+
+    const redirectUrl = AuthSession.makeRedirectUri({ preferLocalhost: true })
     const handleSignInWithGmail = async () => {
          
         setLoading(true)
@@ -27,28 +33,37 @@ export const Login = () => {
 
             provider: "google",
             options: {
-                redirectTo: redirectUrl
+                redirectTo: redirectUrl,
+                queryParams: {
+                    prompt: "select_account",
+                    access_type: "offline"
+                }
             }
-        });
+        })
 
         if (response.error) {
 
             Alert.alert(
                 "Login Failed",
-                response.error.message || "Invalid email or password. Please try again.",
+                response.error.message,
                 [{ text: "OK" }]
             )
         } else {
-            // Check user existence and handle signup
-            const authSession = await WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
-            if(authSession.type === "success") {
+            
+            WebBrowser.openAuthSessionAsync(response.data.url, redirectUrl)
+                .then((authSession) => {
+                    if (authSession.type === "success") {
 
-                //
-            }
+                        navigation.navigate("main")
+                    }
+                })
+                .catch((reason) => {
+                    console.log(reason)
+                })
 
         }
         setLoading(false)
-    };
+    }
 
     const handleSignInWithPassword = async () => {
 
@@ -79,20 +94,13 @@ export const Login = () => {
         }
     }
 
-    const [session, setSession] = useState<Session | null>(null)
+    const handleSignUpClick = () => {
 
-    useEffect(() => {
-
-        supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-        })
-    }, [])
-    useEffect(() => {
-        console.log(session && session.user && session.user.id)
-    }, [session])
+        navigation.navigate("signup")
+    }
 
     return (
-        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
+        <KeyboardAwareScrollView style={{ flex: 1 }}>
             <View style= {styles.container}>
                 <View style= {styles.content}>
                     <View style= {styles.topContainer}>
@@ -121,14 +129,14 @@ export const Login = () => {
                         </TouchableOpacity>
                         <View style= {styles.signupTextContainer}>
                             <Text style= {{color: "darkgrey"}}>You don't have an account ?</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress= {handleSignUpClick}>
                                 <Text style= {{color: "grey", fontWeight: "bold"}}>Signup</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             </View>
-        </KeyboardAvoidingView>
+        </KeyboardAwareScrollView>
     )
 }
 
@@ -143,6 +151,7 @@ const styles = StyleSheet.create(
             flexDirection: "column"
         },
         topContainer: {
+            marginTop: 150,
             marginBottom: 70
         },
         bottomContainer: {
