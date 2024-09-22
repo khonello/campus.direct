@@ -54,7 +54,15 @@ export const SignInScreen = ({ navigation }) => {
                 .then((authSession) => {
                     if (authSession.type === "success") {
 
-                        navigation.navigate("main")
+                        const url = new URL(authSession.url)
+                        const params = new URLSearchParams(url.hash.slice(1))
+
+                        supabase.auth.setSession({ access_token: params.get("access_token"), refresh_token: params.get("refresh_token") })
+                            .then((value) => {
+                                if (value.data.session.user.aud === "authenticated") {
+                                    navigation.navigate("main")
+                                }
+                            })
                     }
                 })
                 .catch((reason) => {

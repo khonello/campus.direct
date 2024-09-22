@@ -90,7 +90,8 @@ const MainScreen = ({ navigation }) => {
 
     const [showAvatar, setShowAvatar] = useState(true)
     const [showModal, setShowModal] = useState(false)
-    const [showDescription, setShowDescription] = useState(false)
+    const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+    const [showProfileModal, setShowProfileModal] = useState(false)
     const [description, setDescription] = useState({ name: null, direction: null })
     const [snapPoints, setSnapPoints] = useState(
         ["12%"]
@@ -132,7 +133,8 @@ const MainScreen = ({ navigation }) => {
 
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
-    const [profileInfo, setProfileInfo] = useState({})
+    const [profileInfo, setProfileInfo] = useState({ avatar: "../../assets/avatar.png", name: null, email: null })
+    const [tempProfile, setTempProfile] = useState({ name: null })
     const [polylineCoordinates, setPolylineCoordinates] = useState([])
     const [destinationPosition, setDestinationPosition] = useState( { id: null, name: null, lat: null, lon: null, placeID: null} )
     const [currentPosition, setCurrentPosition] = useState( {name: null, lat: null, lon: null} )
@@ -155,9 +157,9 @@ const MainScreen = ({ navigation }) => {
     const thunderForestURL = "https://tile.thunderforest.com/transport/{z}/{x}/{y}.png?apikey=d0051eac5a6b44fabc51ab2f9a669c6e"
     const openstreetURL = "http://c.tile.openstreetmap.org/{z}/{x}/{y}.png"
     const profileData = [
-        {key: 1, icon:<Entypo name= "grid" size= {30} color= {"#858585"}/>, content:  "Library", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
-        {key: 2, icon: <Entypo name= "info" size= {30} color= {"#858585"}/>, content: "Preference", arrow: <Entypo name= "chevron-small-right" size= {20} color= {"#858585"}/>},
-        {key: 3, icon: <Entypo name= "arrow-left" size= {30} color= {"#858585"}/>, content: "Logout", arrow: <Entypo name= "chevron-small-left" size= {20} color= {"#858585"}/>}
+        {key: 1, icon:<Entypo name= "grid" size= {30} color= {"#858585"}/>, content:  "Library", arrow: null},
+        {key: 2, icon: <Entypo name= "info" size= {30} color= {"#858585"}/>, content: "Preference", arrow: null},
+        {key: 3, icon: <Entypo name= "arrow-left" size= {30} color= {"#858585"}/>, content: "Logout", arrow: null}
     ]
 
     const minZoomLevel = 0.005; // Adjust this value to set the minimum zoom level
@@ -473,6 +475,17 @@ const MainScreen = ({ navigation }) => {
         }
     }
 
+    const handleShowProfileClosed = () => {
+
+        setShowProfileModal(false)
+
+        // console.log(tempProfile.name)
+        setProfileInfo((prev) => (
+            {...prev, name: tempProfile.name?.length > 0 ? tempProfile.name : prev.name}
+        ))
+
+    }
+
     const recentRenderItem = ( item ) => {
 
         return (
@@ -499,24 +512,6 @@ const MainScreen = ({ navigation }) => {
                 </TouchableOpacity>
             </BottomSheetView>
         )
-    }
-
-    const findNearestNeighbour = ( checkPlace: Place ) => {
-
-        const R = 6371000
-        const φ1 = currentPosition.lat * Math.PI / 180
-        const φ2 = parseFloat(checkPlace.coord.lat) * Math.PI / 180
-
-        const Δφ = (parseFloat(checkPlace.coord.lat) - currentPosition.lat) * Math.PI / 180
-        const Δλ = (parseFloat(checkPlace.coord.lon) - currentPosition.lon) * Math.PI / 180
-
-        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-                Math.cos(φ1) * Math.cos(φ2) *
-                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const distance = R * c;
-
-        return { placeID: checkPlace.placeID, isFar: distance > 10, distance: distance }
     }
 
     const profileRenderItem = ( item ) => {
@@ -560,12 +555,12 @@ const MainScreen = ({ navigation }) => {
         </BottomSheetView>
     )
 
-    const AvatarComponent = () => {
+    const AvatarComponent = ({ info }) => {
 
         if (showAvatar) {
             return (
                 <BottomSheetView>
-                    <Image source= {require("../../assets/avatar.png")} style= {styles.headerProfileImage}/>
+                    <Image source= {{uri: info.avatar}} style= {styles.headerProfileImage}/>
                 </BottomSheetView>
             )
         }
@@ -673,7 +668,7 @@ const MainScreen = ({ navigation }) => {
         const handleFacilityNameClick = ( facility ) => {
 
             setDescription({ name: facility.name, direction: facility.direction })
-            setShowDescription(true)
+            setShowDescriptionModal(true)
         }
 
         recentD.forEach((obj) => {
@@ -753,11 +748,14 @@ const MainScreen = ({ navigation }) => {
         supabase.auth.getSession()
             .then(({ data }) => {
 
-                console.log(data)
+                setProfileInfo((prev) => (
+                    {...prev, name: data.session.user.user_metadata.full_name, email: data.session.user.new_email ? data.session.user.new_email : data.session.user.email, avatar: data.session.user.user_metadata.avatar_url}
+                ))
             })
             .catch((reason) => {
-                
+                console.log(reason)
             })
+            
         setRender({which: "original", render: originalContent})
         setBackground("mapview")
     }, [])
@@ -862,6 +860,17 @@ const MainScreen = ({ navigation }) => {
 
     }, [destinationPosition])
 
+    useEffect(() => {
+
+        (profileInfo.name) && (
+            supabase.auth.updateUser({ data: { name: profileInfo.name }})
+                .then((value) => {
+                    //
+                })
+        )
+
+    }, [profileInfo])
+
     const originalContent = (
 
         <BottomSheetScrollView style= {styles.scrollContainer}>
@@ -931,7 +940,7 @@ const MainScreen = ({ navigation }) => {
                             <LottieView source= {animation} autoPlay loop style= {{width: 100, height: 100}} ref= {animationRef}/>
                         </View>
                     </ModalBox>
-                    <ModalBox isOpen={showDescription} onClosed={() => setShowDescription(false)} style={styles.directionsBox}>
+                    <ModalBox isOpen={showDescriptionModal} onClosed={() => setShowDescriptionModal(false)} style={styles.directionsBox}>
                         <View style={{ justifyContent: 'center', alignItems: 'center' }}>
                             <View style= {{width: WIDTH * 0.65, minHeight: HEIGHT * 0.125, borderRadius: 7, backgroundColor: "lightgrey", paddingLeft: 5}}>
                                 <View style= {{flexDirection: "row", marginTop: 10}}>
@@ -945,6 +954,11 @@ const MainScreen = ({ navigation }) => {
                             </View>
                         </View>
                     </ModalBox>
+                    <ModalBox isOpen={showProfileModal} onClosed={handleShowProfileClosed} style={styles.directionsBox}>
+                        <View style={{ justifyContent: "center", alignItems: "center" }}>
+                            <TextInput placeholder= {"Full Name"} value= {tempProfile.name} onChangeText= {(text) => setTempProfile((prev) => ({ name: text}))} style= {{borderWidth: 1}}/>
+                        </View>
+                    </ModalBox>
                     <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
                         <BottomSheetView style= {styles.headerContainer}>
                             <BottomSheetView style= {styles.textinputContainer}>
@@ -953,7 +967,7 @@ const MainScreen = ({ navigation }) => {
                             </BottomSheetView>
 
                             <TouchableOpacity style= {styles.profileContainer} onPress= {handleProfilePress}>
-                                <AvatarComponent/>
+                                <AvatarComponent info= {profileInfo}/>
                             </TouchableOpacity>
 
                         </BottomSheetView>
@@ -965,13 +979,13 @@ const MainScreen = ({ navigation }) => {
                             <BottomSheet ref= {profileRef} snapPoints={["30%"]} handleComponent= {null} style= {{borderRadius: 15}}>
                                 <BottomSheetView style= {styles.profileSheetContainer}>
                                     <BottomSheetView style= {styles.profileSheetHeaderContainer}>
-                                        <BottomSheetView style= {styles.profileSheetHeaderImageContainer}>
-                                            <Image source= {require("../../assets/avatar.png")} style= {styles.profileSheetHeaderImageContainer}/>
-                                        </BottomSheetView>
-                                        <BottomSheetView style= {styles.profileSheetHeaderMainContainer}>
-                                            <Text style= {{fontSize: 20, fontWeight: "bold"}}>Firstname Lastname</Text>
-                                            <Text>somebody@email.com</Text>
-                                        </BottomSheetView>
+                                        <TouchableOpacity style= {styles.profileSheetHeaderImageContainer}>
+                                            <Image source= {{ uri: profileInfo.avatar }} style= {styles.profileSheetHeaderImageContainer}/>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style= {styles.profileSheetHeaderMainContainer} onPress= {() => setShowProfileModal(true)}>
+                                            <Text style= {{fontSize: 20, fontWeight: "bold"}}>{profileInfo.name}</Text>
+                                            <Text>{profileInfo.email}</Text>
+                                        </TouchableOpacity>
                                         <TouchableOpacity onPress= {handleProfileClose}>
                                             <BottomSheetView style= {styles.profileSheetHeaderCloseContainer}>
                                                 <Entypo name= "circle-with-cross" size= {30} color= {"#858585"}/>

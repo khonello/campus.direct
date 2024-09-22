@@ -31,7 +31,7 @@ export const LandingScreen = ({ navigation }) => {
         loaded && (
             supabase.auth.onAuthStateChange((event, session) => {
                 if (session && session.user.aud === "authenticated") {
-                    
+
                     setTimeout(() => {
                         navigation.navigate("main")
                     }, 2000)
@@ -41,7 +41,6 @@ export const LandingScreen = ({ navigation }) => {
                     }, 2000)
                 }
 
-                console.log(session)
             })
         )
     }, [loaded])
