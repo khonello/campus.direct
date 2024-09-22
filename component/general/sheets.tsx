@@ -134,7 +134,7 @@ const MainScreen = ({ navigation }) => {
     const [profileVisible, setProfileVisible] = useState(false)
     const [profileClicked, setProfileClicked] = useState(null)
     const [profileInfo, setProfileInfo] = useState({ avatar: "../../assets/avatar.png", name: null, email: null })
-    const [tempProfile, setTempProfile] = useState({ name: null })
+    const [tempProfile, setTempProfile] = useState({ name: null, email: null })
     const [polylineCoordinates, setPolylineCoordinates] = useState([])
     const [destinationPosition, setDestinationPosition] = useState( { id: null, name: null, lat: null, lon: null, placeID: null} )
     const [currentPosition, setCurrentPosition] = useState( {name: null, lat: null, lon: null} )
@@ -478,11 +478,24 @@ const MainScreen = ({ navigation }) => {
     const handleShowProfileClosed = () => {
 
         setShowProfileModal(false)
+        if(!tempProfile.email?.match(/^\w+@[a-z]{3,}\.[a-z]+$/)) {
+            Alert.alert(
+                "Invalid Email",
+                "The email is invalid",
+                [
+                    { text: "OK", style: "cancel" }
+                ]
 
-        // console.log(tempProfile.name)
-        setProfileInfo((prev) => (
-            {...prev, name: tempProfile.name?.length > 0 ? tempProfile.name : prev.name}
-        ))
+            )
+            setProfileInfo((prev) => (
+                {...prev, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
+            ))
+        } else {
+            setProfileInfo((prev) => (
+                {...prev, email: tempProfile.email, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
+            ))
+
+        }
 
     }
 
@@ -512,6 +525,24 @@ const MainScreen = ({ navigation }) => {
                 </TouchableOpacity>
             </BottomSheetView>
         )
+    }
+
+    const findNearestNeighbour = ( checkPlace: Place ) => {
+
+        const R = 6371000
+        const φ1 = currentPosition.lat * Math.PI / 180
+        const φ2 = parseFloat(checkPlace.coord.lat) * Math.PI / 180
+
+        const Δφ = (parseFloat(checkPlace.coord.lat) - currentPosition.lat) * Math.PI / 180
+        const Δλ = (parseFloat(checkPlace.coord.lon) - currentPosition.lon) * Math.PI / 180
+
+        const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        const distance = R * c;
+
+        return { placeID: checkPlace.placeID, isFar: distance > 10, distance: distance }
     }
 
     const profileRenderItem = ( item ) => {
@@ -862,8 +893,8 @@ const MainScreen = ({ navigation }) => {
 
     useEffect(() => {
 
-        (profileInfo.name) && (
-            supabase.auth.updateUser({ data: { name: profileInfo.name }})
+        (profileInfo.name && profileInfo.email) && (
+            supabase.auth.updateUser({ email: profileInfo.email, data: { name: profileInfo.name }})
                 .then((value) => {
                     //
                 })
@@ -956,7 +987,9 @@ const MainScreen = ({ navigation }) => {
                     </ModalBox>
                     <ModalBox isOpen={showProfileModal} onClosed={handleShowProfileClosed} style={styles.directionsBox}>
                         <View style={{ justifyContent: "center", alignItems: "center" }}>
-                            <TextInput placeholder= {"Full Name"} value= {tempProfile.name} onChangeText= {(text) => setTempProfile((prev) => ({ name: text}))} style= {{borderWidth: 1}}/>
+                            <TextInput placeholder= {"Full Name"} value= {tempProfile.name} onChangeText= {(text) => setTempProfile((prev) => ({...prev, name: text}))} style= {{borderWidth: 1}}/>
+                            <TextInput placeholder= {"Email"} value= {tempProfile.email} onChangeText= {(text) => setTempProfile((prev) => ({...prev, email: text}))} style= {{borderWidth: 1}}/>
+
                         </View>
                     </ModalBox>
                     <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
