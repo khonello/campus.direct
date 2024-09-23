@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, Touch
 import { useFonts } from 'expo-font';
 import { supabase } from "../../config/supabase";
 import { Asset } from "expo-asset";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const asset = Asset.fromModule(require("../../assets/pathway.png"))
 export const LandingScreen = ({ navigation }) => {
@@ -16,8 +17,10 @@ export const LandingScreen = ({ navigation }) => {
         if (loaded) {
             return (
                 <View style= {styles.content}>
-                    <Text style= {styles.textSyle}>CampusDirect</Text>
-                    {/* <Image source= {asset} style= {{width: asset.width * 0.7, height: asset.height * 0.7}}/> */}
+                    <View style= {styles.textContainer}>
+                        <Text style= {styles.textSyle}>CampusDirect</Text>
+                    </View>
+                    <Image source= {asset} style= {{width: asset.width * 0.7, height: asset.height * 0.7,}}/>
                 </View>
             )
         }
@@ -56,17 +59,19 @@ const styles = StyleSheet.create(
         container: {
             flex: 1,
             backgroundColor: "#6A63F6",
-            // justifyContent: "center",
+            justifyContent: "center",
             alignItems: "center",
         },
         content: {
 
         },
+        textContainer: {
+            alignItems: "center"
+        },
         textSyle: {
             fontFamily: "Poppins",
             fontSize: 36,
             color: "white",
-            marginTop: 300
         }
     }
 )

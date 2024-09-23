@@ -53,7 +53,15 @@ export const SignUpScreen = ( {navigation} ) => {
                 .then((authSession) => {
                     if (authSession.type === "success") {
 
-                        navigation.navigate("main")
+                        const url = new URL(authSession.url)
+                        const params = new URLSearchParams(url.hash.slice(1))
+
+                        supabase.auth.setSession({ access_token: params.get("access_token"), refresh_token: params.get("refresh_token") })
+                            .then((value) => {
+                                if (value.data.session.user.aud === "authenticated") {
+                                    navigation.navigate("main")
+                                }
+                            })
                     }
                 })
                 .catch((reason) => {
@@ -68,25 +76,33 @@ export const SignUpScreen = ( {navigation} ) => {
 
         if (email.length > 0 && password.length > 0) {
             setLoading(true)
-            const response = await supabase.auth.signInWithPassword({
+            const response = await supabase.auth.signUp({
                 email: email,
-                password: password
+                password: password,
             })
 
             if (response.error) {
 
-                console.log(response.error.message, loading);
                 Alert.alert(
-                    "Login Failed",
-                    response.error.message || "Invalid email or password. Please try again.",
+                    "Signup Failed",
+                    "Something went wrong. Try again",
                     [{ text: "OK" }]
                 )
             } else {
 
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                    setSessssion(session)
-                })
-                console.log(response.data.session)
+                Alert.alert(
+                    "Confirmation Email Sent",
+                    "Check your inbox or spam box",
+                    [
+                        { 
+                            text: "OK",
+                            onPress: () => {
+                                navigation.navigate("signin")
+                            }
+                        }
+
+                    ]
+                )
             }
             setLoading(false)
             setEmail(""); setPassword("")

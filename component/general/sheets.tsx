@@ -24,6 +24,7 @@ import * as Location from "expo-location";
 import * as FileSystem from "expo-file-system";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
@@ -465,8 +466,11 @@ const MainScreen = ({ navigation }) => {
                 "Are you sure ?",
                 [
                     { text: "Yes", onPress: () => {
-                            supabase.auth.signOut()
-                            navigation.navigate("signin")
+                            AsyncStorage.clear()
+                                .then(() => {
+                                    supabase.auth.signOut()
+                                    navigation.navigate("signin")
+                                })
                         }
                     },
                     { text: "No", style: "cancel" }
@@ -478,24 +482,35 @@ const MainScreen = ({ navigation }) => {
     const handleShowProfileClosed = () => {
 
         setShowProfileModal(false)
-        if(!tempProfile.email?.match(/^\w+@[a-z]{3,}\.[a-z]+$/)) {
-            Alert.alert(
-                "Invalid Email",
-                "The email is invalid",
-                [
-                    { text: "OK", style: "cancel" }
-                ]
+        Alert.alert(
+            "Confirmation",
+            "Are you sure you want to update info.",
+            [
+                { text: "Update", onPress: () => {
+                        if(!tempProfile.email?.match(/^\w+@[a-z]{3,}\.[a-z]+$/)) {
 
-            )
-            setProfileInfo((prev) => (
-                {...prev, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
-            ))
-        } else {
-            setProfileInfo((prev) => (
-                {...prev, email: tempProfile.email, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
-            ))
-
-        }
+                            Alert.alert(
+                                "Invalid Email",
+                                "The email is invalid or no email provided",
+                                [
+                                    { text: "OK", style: "cancel" }
+                                ]
+                
+                            )
+                            setProfileInfo((prev) => (
+                                {...prev, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
+                            ))
+                        } else {
+                            setProfileInfo((prev) => (
+                                {...prev, email: tempProfile.email, name: tempProfile.name.length > 0 ? tempProfile.name : prev.name}
+                            ))
+                
+                        }
+                    } 
+                },
+                { text: "Cancel", style: "cancel" }
+            ]
+        );
 
     }
 
@@ -987,9 +1002,8 @@ const MainScreen = ({ navigation }) => {
                     </ModalBox>
                     <ModalBox isOpen={showProfileModal} onClosed={handleShowProfileClosed} style={styles.directionsBox}>
                         <View style={{ justifyContent: "center", alignItems: "center" }}>
-                            <TextInput placeholder= {"Full Name"} value= {tempProfile.name} onChangeText= {(text) => setTempProfile((prev) => ({...prev, name: text}))} style= {{borderWidth: 1}}/>
-                            <TextInput placeholder= {"Email"} value= {tempProfile.email} onChangeText= {(text) => setTempProfile((prev) => ({...prev, email: text}))} style= {{borderWidth: 1}}/>
-
+                            <TextInput placeholder= {"Full Name"} value= {tempProfile.name} onChangeText= {(text) => setTempProfile((prev) => ({...prev, name: text}))} style= {{borderWidth: 1, borderColor: "darkgrey", width: WIDTH * 0.6, height: 25, marginBottom: 5, borderRadius: 5, paddingLeft: 5}}/>
+                            <TextInput placeholder= {"Email"} value= {tempProfile.email} onChangeText= {(text) => setTempProfile((prev) => ({...prev, email: text}))} style= {{borderWidth: 1, borderColor: "darkgrey", width: WIDTH * 0.6, height: 25, borderRadius: 5, paddingLeft: 5}}/>
                         </View>
                     </ModalBox>
                     <BottomSheet snapPoints= {snapPoints} keyboardBehavior= {"extend"} onChange= {handleMainChange} ref= {mainRef}>
@@ -1231,7 +1245,7 @@ const styles  = StyleSheet.create(
             justifyContent: "center",
             alignItems: "center",
             width: WIDTH * 0.7,
-            height: HEIGHT * 0.15,
+            height: HEIGHT * 0.1,
             backgroundColor: "#fff",
             borderRadius: 13
         }

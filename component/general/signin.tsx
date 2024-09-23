@@ -1,4 +1,4 @@
-import { View, Text, TextInput, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView } from "react-native";
+import { View, Text, TextInput, StyleSheet, Dimensions, PixelRatio, TouchableOpacity, TouchableWithoutFeedback, ImageBackground, Button, Alert, Linking, Keyboard, KeyboardAvoidingView, Modal } from "react-native";
 import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from "react";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Image } from "expo-image";
@@ -7,8 +7,13 @@ import { Session } from '@supabase/supabase-js';
 import { supabase } from '../../config/supabase';
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
+import ModalBox from "react-native-modalbox";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+// is the otp input the way it supposed to be, i fill it wrong. what is the best way to go about that
+// also even after the otp is submitted, when i check the the supabase dashboard, that particular user object is still unverified.
+// and also when i log the value.data within the handleVerifyOtp function, session is null 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
     
@@ -18,14 +23,63 @@ const loadingAssert = Asset.fromModule(require("../../assets/circle.gif"))
 
 export const SignInScreen = ({ navigation }) => {
 
+    const insets = useSafeAreaInsets()
+
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
-    const [loading, setLoading] = useState(false);
-    const [session, setSession] = useState<Session | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [otpVisible, setOtpVisible] = useState(false)
 
     WebBrowser.maybeCompleteAuthSession()
 
     const redirectUrl = AuthSession.makeRedirectUri({ preferLocalhost: true })
+    const [otp, setOtp] = useState(Array(6).fill(""))
+    const [otpColor, setOtpColor] = useState({color: "red"})
+
+    const OTPComponent = ({ show }) => {
+
+        if (show) {
+            return (
+                <View style={styles.modalContainer}>
+                    <View style={{...styles.otpContainer, marginTop: insets.top * 5}}>
+                        {otp.map((digit, index) => (
+                            <TextInput key={index} placeholder="0" style={{...styles.otpInput, borderColor: otpColor.color}} value={otp[index]} maxLength={1} keyboardType= "numeric" onChangeText={(text) => {
+
+                                    setOtp((prev) => {
+                                        const arr = [...prev]
+                                        arr[index] = text
+                                        return arr
+                                    })
+                                }}
+                            />
+                        ))}
+                    </View>
+                    <View style= {styles.footerButtonsContainer}>
+                        <TouchableOpacity onPress={handleVerifyOtp} style= {{...styles.butttonStyle, backgroundColor: "#6A63F6", borderRadius: 5, paddingLeft: 12, paddingRight: 12}}>
+                            <Text style= {{color: "white", fontWeight: "bold"}}>Verify</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setOtpVisible(false)} style= {styles.butttonStyle}>
+                            <Text>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )
+        }
+    }
+
+    const handleVerifyOtp = () => {
+
+        supabase.auth.verifyOtp({ email: email, token: otp.join(""), type: "signup" })
+            .then((value) => {
+                console.log(value.data)
+                setOtpVisible(false)
+            })
+            .catch((reason) => {
+                setOtpColor(({color: "red"}))
+                console.log(reason)
+            })
+    }
+
     const handleSignInWithGmail = async () => {
          
         setLoading(true)
@@ -75,8 +129,9 @@ export const SignInScreen = ({ navigation }) => {
 
     const handleSignInWithPassword = async () => {
 
-        if (email.length > 0 && password.length > 0) {
+        if (email.match(/^\w+@[a-z]{3,}\.[a-z]+$/) && password.length > 0) {
             setLoading(true)
+
             const response = await supabase.auth.signInWithPassword({
                 email: email,
                 password: password
@@ -84,18 +139,20 @@ export const SignInScreen = ({ navigation }) => {
 
             if (response.error) {
 
-                console.log(response.error.message, loading);
-                Alert.alert(
-                    "Login Failed",
-                    response.error.message || "Invalid email or password. Please try again.",
-                    [{ text: "OK" }]
-                )
+                if(response.error.code === "email_not_confirmed") {
+
+                    setOtpVisible(true)
+                } else {
+
+                    Alert.alert(
+                        "Login Failed",
+                        response.error.message,
+                        [{ text: "OK" }]
+                    )
+                }
             } else {
 
-                supabase.auth.getSession().then(({ data: { session } }) => {
-                    setSession(session)
-                })
-                console.log(response.data.session)
+                console.log(response.data)
             }
             setLoading(false)
             setEmail(""); setPassword("")
@@ -106,6 +163,16 @@ export const SignInScreen = ({ navigation }) => {
 
         navigation.navigate("signup")
     }
+
+    useEffect(() => {
+
+        const filtered = otp.filter((digit) => digit !== "")
+        if (filtered.length === 6) {
+            setOtpColor({color: "green"})
+        } else {
+            setOtpColor({color: "red"})
+        }
+    }, [otp])
 
     return (
         <KeyboardAwareScrollView style={{ flex: 1 }}>
@@ -143,6 +210,7 @@ export const SignInScreen = ({ navigation }) => {
                         </View>
                     </View>
                 </View>
+                <OTPComponent show= {otpVisible}/>
             </View>
         </KeyboardAwareScrollView>
     )
@@ -220,7 +288,37 @@ const styles = StyleSheet.create(
             flexDirection: "row",
             justifyContent: "center",
             paddingTop: 10
+        },
+        modalContainer: {
+            position: "absolute",
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "white",
+            width: WIDTH,
+            height: HEIGHT * 2,
+        },
+        otpContainer: {
+            flexDirection: "row",
+        },
+        otpInput: {
+            width: WIDTH * 0.12,
+            height: HEIGHT * 0.12,
+            paddingLeft: 20,
+            borderWidth: 1,
+            // borderColor: "red",
+            borderRadius: 5,
+            marginRight: 10,
+        },
+        footerButtonsContainer: {
+            flexDirection: "row",
+            marginTop: 10,
+            justifyContent: "space-between",
+            alignItems: "center",
+            minWidth: WIDTH * 0.2,
+            minHeight: 20
+        },
+        butttonStyle: {
+            padding: 7
         }
-
     }
 )
