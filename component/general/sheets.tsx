@@ -74,21 +74,21 @@ const MainScreen = ({ navigation }) => {
     const googleMapsAPIKey = Constants.manifest2.extra.expoClient.extra.googleMapsApiKey
 
     const campus = [
-        { id: 1, names: ["foe", "faculty of engineering", "engineering block"], facilities: ["classroom", "office", "washroom", "workshop", "lab"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"}, images: 4, classroom: [], office: [], washroom: [], workshop: [], lab: [] },
+        { id: 1, names: ["foe", "fhas", "faculty of engineering", "engineering block"], facilities: ["classroom", "office", "washroom", "workshop", "lab"], officialName: "Faculty Of Engineering", placeID: "ChIJ-f_vcYFq3w8RB-jHZuqSA0Q", coord: {lat: "6.0645867", lon: "-0.2658555"}, images: 4, classroom: [], office: [], washroom: [], workshop: [], lab: [] },
         { id: 2, names: ["fbne", "faculty of built and natural environment"], facilities: ["library","classroom", "office", "washroom"], officialName: "Faculty of Built and Natural Environment", placeID: "ChIJjRNljXdr3w8RmfE2dCRNU5I", coord: {lat: "6.065277499999999", lon: "-0.2657916"}, images: 3, library: [], classroom: [], office: [], washroom: [] },
         { id: 3, names: ["ccb", "central classroom block"], facilities: ["washroom", "classroom", "office", "lab", "library"], officialName: "Central Classroom Block", placeID: "ChIJTRlU9IBq3w8RJBZ1hdU3eQQ", coord: {lat: "6.0650474", lon: "-0.2633137"}, images: 4, washroom: [], classroom: [], office: [], lab: [], library: [{ name: "E-Library", direction: "The left block when facing CCB, last floor" }] },
-        { id: 4, names: ["as", "applied science"], facilities: ["office", "theater", "lab", "washroom", "classroom", "typingpool"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"}, images: 5, office: [], theater: [], lab: [], washroom: [], classroom: [], typingpool: [] },
+        { id: 4, names: ["as", "applied science", "fast"], facilities: ["office", "theater", "lab", "washroom", "classroom", "typingpool"], officialName: "Applied Science", placeID: "ChIJvffQqIFq3w8RS9zAMHcllvA", coord: {lat: "6.0655414", lon: "-0.2647885"}, images: 5, office: [{ name: "Dean of Student Affairs", direction: "FAST block top floor, near FAST Dean's office, office number AS 212" }, { name: "FAST Dean", direction: "FAST block top floor, near Dean of student affairs' office, office number AS 211" }, { name: "FAST Accountant", direction: "FAST block top floor, near FAST Dean's office, office number AS 202"}, { name: "HoD Applied Maths", direction: "FAST block grand floor, below Dean of Student affairs' office, office number AS 114" }, { name: "HoD Professional Studies", direction: "FAST block grand floor, below FAST Dean's office, office number AS 113" }], theater: [ {name: "Abba Bentil", direction: "Right at the main entrance of FAST, opposite the staff common room"} ], lab: [ { name: "FAST computer lab", direction: "FAST block top floor, near FAST Administrators office, office number AS 210" } ], washroom: [], classroom: [], typingpool: [] },
         { id: 5, names: ["getfund"], facilities: ["washroom", "tvroom", "hostelroom", "studyroom", "gamepool", "shop"], officialName: "GetFund", placeID: "ChIJYdqTyIZq3w8RQBZzxr_cN2s", coord: {lat: "6.0619622", lon: "-0.2653302"}, images: 4, washroom: [], tvroom: [], hostelroom: [], studyroom: [], gamepool: [], shop: [] },
         { id: 6, names: ["tennis"], facilities: [], officialName: "Tennis", placeID: "ChIJUzNi3vBr3w8R2ZBtUl0JYIo", coord: {lat: "6.0610236", lon: "-0.2641309"}, images: 3 },
         { id: 7, names: ["basket ball", "bball"], facilities: [], officialName: "Basket Ball", placeID: "ChIJb9Uaq4Fq3w8RWMMfJx3oHgI", coord: {lat: "6.065430500000001", lon: "-0.2645425"}, images: 2 },
         { id: 8, names: ["adb", "agriculture development bank"], facilities: [], officialName: "Agriculture Development Bank", placeID: "ChIJHUgeNzVA3w8RhtgdHTd9DX8", coord: {lat: "6.0648173", lon: "-0.2654369999999999"}, images: 3 },
-        { id: 9, names: ["ad"], facilities: ["clinic", "washroom", "classroom", "library", "radio", "lab", "office"], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M", coord: {lat: "6.0644443", lon: "-0.2649825"}, images: 3, clinic: [], washroom: [], classroom: [], library: [], radio: [], lab: [], office: [] },
+        { id: 9, names: ["ad"], facilities: ["clinic", "washroom", "classroom", "library", "radio", "lab", "office"], officialName: "AD Block ( Old Administration Block )", placeID: "ChIJVdBtEIFq3w8RrqQRORv2e5M", coord: {lat: "6.0644443", lon: "-0.2649825"}, images: 3, clinic: [ {name: "School clinic", direction: "AD block, ground floor, to the far right, after the pharmacy"} ], washroom: [ {name: "Washroom1", direction: "Left side of AD block"} ], classroom: [ {name: "Classroom1", direction: "First floor"} ], library: [ {name: "Main Library", direction: "Last floor, to the right of the councelling office"} ], radio: [ {name: "KTU Radio", direction: "Last floor, to the far left, after the councelling office"} ], lab: [ {name: "Thin client", direction: "AD block, ground floor, to the far left, after the old IT directorate"} ], office: [ { name: "Councelling Office", direction: "Top floor, between kTU radio and the library" } ] },
         { id: 10, names: ["fbms", "faculty of business and management studies"], facilities: ["classroom", "washroom", "conference", "office", "theater", "lab", "workshop", "shop"], officialName: "Faculty of Business and Management Studies", placeID: "ChIJIejocABr3w8RzW3tHkyur0w", coord: {lat: "6.065087", lon: "-0.2639526"}, images: 4, classroom: [], washroom: [], conference: [], office: [], theater: [], lab: [], workshop: [], shop: [] },
         { id: 11, names: ["gcb", "ghana commercial bank atm"], facilities: [], officialName: "Ghana Commercial Bank ATM", placeID: "ChIJV7-LHshr3w8Re6XgDWGQ5F0", coord: {lat: "6.0650265", lon: "-0.2647094"}, images: 2 },
-        { id: 12, names: ["sg", "societe generale atm"], facilities: [], officialName: "Societe Generale Ghana ATM", placeID: "ChIJ93o3o1xr3w8RsSTxJL6cHkw", coord: {lat: "6.0646713", lon: "-0.2649737"}, images: 2 }
+        { id: 12, names: ["sg", "societe generale atm"], facilities: [], officialName: "Societe Generale Ghana ATM", placeID: "ChIJ93o3o1xr3w8RsSTxJL6cHkw", coord: {lat: "6.0646713", lon: "-0.2649737"}, images: 2 },
+        { id: 13, names: ["compssa", "computer science department"], facilities: ["office", "lab", "washroom"], officialName: "Computer Science Department", placeID: null, coord: { lat: "6.064771", lon: "-0.26439" }, images: 4, office: [ {name: "HoD Office", direction: "top floor, to the far left after climbing the stairs, after lab 3, office number CC 202"}, {name: "Industrial Liaison Office", direction: "Ground floor to the right, after the main entrance, office number CC 109"},  {name: "Student Loans Office", direction: "Grand floor to the right, after the Industrial Liaiason, Office number CC 108"} ], lab: [ {name: "Lab1", direction: "Top floor to the right, after the exams room, office number CC 206"}, {name: "Lab2", direction: "Top floor to the left,before lab3, office number CC 204"}], washroom: [{name: "Washroom1", direction: "top floor to the far right"}] },
     ]
     
-
     const [showAvatar, setShowAvatar] = useState(true)
     const [showModal, setShowModal] = useState(false)
     const [showDescriptionModal, setShowDescriptionModal] = useState(false)
@@ -99,7 +99,6 @@ const MainScreen = ({ navigation }) => {
     )
     const [background, setBackground] = useState<Background>("mapview")
     const [render, setRender] = useState({which: "original", render: null})
-
 
     const [textInputValue, setTextInputValue] = useState(null)
     const [initialRegion, setInitialRegion] = useState(
@@ -139,6 +138,7 @@ const MainScreen = ({ navigation }) => {
     const [polylineCoordinates, setPolylineCoordinates] = useState([])
     const [destinationPosition, setDestinationPosition] = useState( { id: null, name: null, lat: null, lon: null, placeID: null} )
     const [currentPosition, setCurrentPosition] = useState( {name: null, lat: null, lon: null} )
+    const [trackerPosition, setTrackerPosition] = useState( {name: null, lat: null, lon: null} )
     const [closetPlaceID, setClosetPlaceID] = useState({ name: null, lat: null, lon: null, placeID: null })
     const [backgroundID, setBackgroundID] = useState(0)
     const [carouselImages, setCarouselImages] = useState(
@@ -163,11 +163,11 @@ const MainScreen = ({ navigation }) => {
         {key: 3, icon: <Entypo name= "arrow-left" size= {30} color= {"#858585"}/>, content: "Logout", arrow: null}
     ]
 
-    const minZoomLevel = 0.005; // Adjust this value to set the minimum zoom level
-    const maxLatitude = 6.07; // Set the maximum latitude for the restricted area
-    const minLatitude = 6.05; // Set the minimum latitude for the restricted area
-    const maxLongitude = -0.26; // Set the maximum longitude for the restricted area
-    const minLongitude = -0.27; // Set the minimum longitude for the restricted area
+    const minZoomLevel = 0.005
+    const maxLatitude = 6.07
+    const minLatitude = 6.05
+    const maxLongitude = -0.26
+    const minLongitude = -0.27
 
     const debouncedSearch = useMemo(
         () => debounce((text) => performSearch(text), debouncedDelay.current),
@@ -177,6 +177,7 @@ const MainScreen = ({ navigation }) => {
 
         let lowerCase = text.toLowerCase().trim()
         // setRecentData([])
+        // console.log(lowerCase)
         
         profileRef.current?.close()
         mainRef.current?.expand()
@@ -297,13 +298,16 @@ const MainScreen = ({ navigation }) => {
 
     const isCoordinateInBounds = ( point: { lat: number, lon: number } ) => {
 
-        const { lat, lon } = point
+        // const { lat, lon } = point
 
-        const isLatInBounds = lat <= NW.lat && lat >= SE.lat
-        const isLonInBounds = lon >= NW.lon && lon <= SE.lon
+        // const isLatInBounds = lat <= NW.lat && lat >= SE.lat
+        // const isLonInBounds = lon >= NW.lon && lon <= SE.lon
       
+        // return (
+        //     isLatInBounds && isLonInBounds
+        // )
         return (
-            isLatInBounds && isLonInBounds
+            true
         )
     }
     
@@ -423,16 +427,14 @@ const MainScreen = ({ navigation }) => {
         const place = campus.find((block) => block.id === item.key)
         mainRef.current?.snapToIndex(0)
 
-        setShowModal(true)
-
+        // setShowModal(true)
         try {
             
             (async () => {
 
-                const location = await Location.getCurrentPositionAsync()
-                if (isCoordinateInBounds({lat: location.coords.latitude, lon: location.coords.longitude})) {
+                if (isCoordinateInBounds({lat: trackerPosition.lon, lon: trackerPosition.lat})) {
 
-                    setCurrentPosition({ name: "Origin", lat: location.coords.latitude, lon: location.coords.longitude })
+                    setCurrentPosition({ name: "Origin", lat: trackerPosition.lat, lon: trackerPosition.lon })
                     setDestinationPosition((prev) => ({...prev, id: item.key, name: place.officialName, lat: place.coord.lat, lon: place.coord.lon, placeID: place.placeID } ));
 
                 } else {
@@ -446,7 +448,7 @@ const MainScreen = ({ navigation }) => {
                     )
                 }
 
-                animationRef.current.pause()
+                // animationRef.current.pause()
                 setShowModal(false)
             })()
 
@@ -628,6 +630,14 @@ const MainScreen = ({ navigation }) => {
             <MapView style= {{flex: 1}} initialRegion= {initialRegion} region= {mapRegion} onRegionChangeComplete= {handleMapRegionChange} ref= {mapRef}>
                 { destinationPosition.name && <Marker coordinate= {{latitude: destinationPosition.lat, longitude: destinationPosition.lon}} title= {destinationPosition.name} description= {"Destination"} pinColor= {"#4F85F6"}/> }
                 { currentPosition.name && <Marker coordinate= {{latitude: currentPosition.lat, longitude: currentPosition.lon}} title= {currentPosition.name} description= {"Start"} pinColor= {"#78D3F8"}/> }
+                { 
+                trackerPosition.lat && 
+                    (
+                        <Marker coordinate= {{latitude: trackerPosition.lat, longitude: trackerPosition.lon}} title= {"Tracker"} >
+                            <Image source= {require("../../assets/tracker.png")} style= {{width: 50, height: 50}}/>
+                        </Marker> 
+                    )
+                }
                 <UrlTile urlTemplate= {thunderForestURL } shouldReplaceMapContent= {true} shouldRasterizeIOS= {true}/>
                 <Polyline coordinates={polylineCoordinates} strokeColor="orange" strokeWidth={2} lineDashPattern={[7, 5]} lineCap= {"round"} lineJoin= {"bevel"}/>
             </MapView>
@@ -636,7 +646,6 @@ const MainScreen = ({ navigation }) => {
 
     const CarouselComponent = ({ prop }) => {
 
-        // const data = [...new Array(1).keys()];
         const carouselRef = useRef(null);
         const [activeIndex, setActiveIndex] = useState(0)
 
@@ -706,7 +715,7 @@ const MainScreen = ({ navigation }) => {
         )
     }
 
-    const DynamicRecentStack = ({ recentD }: { recentD: any[] }) => {
+    const DynamicRecentStack = ({ recentD } : { recentD: any[] }) => {
 
         const height = (HEIGHT * 0.056) * recentD.length
         const components = []
@@ -789,6 +798,16 @@ const MainScreen = ({ navigation }) => {
                 }
             }
 
+            const locationSubscription = await Location.watchPositionAsync(
+                {
+                    timeInterval: 10,
+                    distanceInterval: 5,
+                    accuracy: Location.Accuracy.Highest
+                }, (location) => {
+                    setTrackerPosition( {lat: location.coords.latitude, lon: location.coords.longitude, name: null} )
+                }
+            )
+
         })()
 
         supabase.auth.getSession()
@@ -804,6 +823,8 @@ const MainScreen = ({ navigation }) => {
             
         setRender({which: "original", render: originalContent})
         setBackground("mapview")
+
+
     }, [])
 
     useEffect(() => {
@@ -835,8 +856,8 @@ const MainScreen = ({ navigation }) => {
 
     useEffect(() => {
 
-        // console.log(currentPosition)
-    }, [currentPosition])
+        // console.log(trackerPosition)
+    }, [trackerPosition])
 
     useEffect(() => {
 
@@ -871,7 +892,7 @@ const MainScreen = ({ navigation }) => {
 
         if (destinationPosition.id !== null) {
 
-            const facilities = ["foe", "fbne", "ccb", "as", "getfund", "tennis", "bball", "adb", "ad", "fbms", "gcb", "sg"]
+            const facilities = ["foe", "fbne", "ccb", "as", "getfund", "tennis", "bball", "adb", "ad", "fbms", "gcb", "sg", "compssa"]
             const unique = infrastructure.names.filter((name) => facilities.includes(name))
 
             const transformations = [
@@ -1245,7 +1266,8 @@ const styles  = StyleSheet.create(
             justifyContent: "center",
             alignItems: "center",
             width: WIDTH * 0.7,
-            height: HEIGHT * 0.1,
+            minHeight: HEIGHT * 0.13,
+            maxHeight: HEIGHT * 0.15,
             backgroundColor: "#fff",
             borderRadius: 13
         }

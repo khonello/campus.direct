@@ -11,9 +11,6 @@ import ModalBox from "react-native-modalbox";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// is the otp input the way it supposed to be, i fill it wrong. what is the best way to go about that
-// also even after the otp is submitted, when i check the the supabase dashboard, that particular user object is still unverified.
-// and also when i log the value.data within the handleVerifyOtp function, session is null 
 const WIDTH = Dimensions.get("window").width
 const HEIGHT = Dimensions.get("window").height
     
